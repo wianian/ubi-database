@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubi Database | PubMed Style</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .alert-banner {
+            background-color: #ffdd57;
+            color: #856404;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 500;
+            border-bottom: 1px solid #ffcc00;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .alert-banner a {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        
+        .header {
+            background: linear-gradient(to bottom, #003366, #002244);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .header-left h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        
+        .header-left h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .login-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #003366;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        
+        .search-box {
+            display: flex;
+            max-width: 700px;
+            margin: 0 auto 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            font-size: 1.1rem;
+            outline: none;
+        }
+        
+        .search-btn {
+            background: #0056b3;
+            color: white;
+            border: none;
+            padding: 0 25px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.3s;
+        }
+        
+        .search-btn:hover {
+            background: #004494;
+        }
+        
+        .description {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            color: #555;
+            font-size: 1.05rem;
+        }
+        
+        .content-section {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 25px;
+        }
+        
+        .data-windows {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .data-window {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .window-header {
+            background: #003366;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .window-content {
+            padding: 20px;
+        }
+        
+        .organs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .organs-table th {
+            background-color: #e9ecef;
+            text-align: left;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+        
+        .organs-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .organs-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .organs-table tr:hover {
+            background-color: #e9f7ff;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .sidebar-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .sidebar-title {
+            background: #0056b3;
+            color: white;
+            padding: 12px 15px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .sidebar-links {
+            padding: 15px;
+        }
+        
+        .sidebar-links a {
+            display: block;
+            padding: 10px 0;
+            color: #0056b3;
+            text-decoration: none;
+            border-bottom: 1px solid #eee;
+            transition: all 0.2s;
+        }
+        
+        .sidebar-links a:hover {
+            color: #003366;
+            padding-left: 5px;
+        }
+        
+        .sidebar-links a:last-child {
+            border-bottom: none;
+        }
+        
+        .footer {
+            background: #003366;
+            color: white;
+            padding: 20px;
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .footer-links a {
+            color: #a3c6ff;
+            text-decoration: none;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .copyright {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 900px) {
+            .content-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-windows {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>PHD Research Group of Phoenix Center</h1>
+            <h2>National Protein Science Center</h2>
+            <h3>Made in China</h3>
+        </div>
+        <div class="header-right">
+            <button class="login-btn">Log in</button>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <div class="main-container">
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="logo">Ubi Database<sup>®</sup></div>
+            <div class="search-box">
+                <input type="text" placeholder="Search for organs...">
+                <button class="search-btn">Search</button>
+            </div>
+            <p class="description">
+                The PHD<sup>®</sup> research group mainly studies the ubiquitination modification, 
+                focusing on ubiquitination technology, ubiquitination databases, and atypical ubiquitination 
+                research.
+            </p>
+        </section>
+        
+        <!-- Content Section -->
+        <div class="content-section">
+            <!-- Data Windows -->
+            <div class="data-windows">
+                <!-- Organ Database 1 -->
+                <div class="data-window">
+                    <div class="window-header">Human Organ Database</div>
+                    <div class="window-content">
+                        <table class="organs-table">
+                            <thead>
+                                <tr>
+                                    <th>Organ ID</th>
+                                    <th>Organ Name</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ORG001</td>
+                                    <td>Brain</td>
+                                    <td>Nervous System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG002</td>
+                                    <td>Heart</td>
+                                    <td>Cardiovascular</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG003</td>
+                                    <td>Intestines</td>
+                                    <td>Digestive System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG004</td>
+                                    <td>Kidney</td>
+                                    <td>Urinary System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG005</td>
+                                    <td>Liver</td>
+                                    <td>Digestive System</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Organ Database 2 -->
+                <div class="data-window">
+                    <div class="window-header">Additional Organ Data</div>
+                    <div class="window-content">
+                        <table class="organs-table">
+                            <thead>
+                                <tr>
+                                    <th>Organ ID</th>
+                                    <th>Organ Name</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ORG006</td>
+                                    <td>Lung</td>
+                                    <td>Respiratory System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG007</td>
+                                    <td>Lymph</td>
+                                    <td>Immune System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG008</td>
+                                    <td>Skin</td>
+                                    <td>Integumentary System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG009</td>
+                                    <td>Spleen</td>
+                                    <td>Lymphatic System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG010</td>
+                                    <td>Testicle</td>
+                                    <td>Reproductive System</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Learn Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Learn</div>
+                    <div class="sidebar-links">
+                        <a href="#">About PubMed</a>
+                        <a href="#">FAQ & User Guide</a>
+                        <a href="#">Finding Full Text</a>
+                    </div>
+                </div>
+                
+                <!-- Find Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Find</div>
+                    <div class="sidebar-links">
+                        <a href="#">Advanced Search</a>
+                        <a href="#">Clinical Question</a>
+                        <a href="#">Single Citation Matcher</a>
+                    </div>
+                </div>
+                
+                <!-- Download Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Download</div>
+                    <div class="sidebar-links">
+                        <a href="#">E-utilities API</a>
+                        <a href="#">FTP</a>
+                        <a href="#">Batch Citation Matcher</a>
+                    </div>
+                </div>
+                
+                <!-- Explore Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Explore</div>
+                    <div class="sidebar-links">
+                        <a href="#">MeSH Database</a>
+                        <a href="#">Journals</a>
+                        <a href="#">Organ Database</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#">An initial version of the United States government</a>
+            <a href="#">https://www.worldbank/</a>
+        </div>
+        <div class="copyright">
+            &copy; 2023 National Center for Biotechnology Information, U.S. National Library of Medicine
+        </div>
+    </footer>
+</body>
+</html>
