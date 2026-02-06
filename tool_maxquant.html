@@ -616,11 +616,12 @@
                      console.warn(`Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). Grouping might be misaligned.`);
                 }
                 
-                // Initialize Counts (Numeric counts, not Sets)
-                ctx.sampleCounts = new Uint32Array(ctx.dataColIndices.length).fill(0);
+                // Initialize Sets for Unique Counting (Sample and Group Identification)
+                // We use Sets to count unique occurrences of the Modification Column Value
+                ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
                 
                 const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                ctx.groupCounts = new Uint32Array(numGroups).fill(0);
+                ctx.groupSets = new Array(numGroups).fill(null).map(() => new Set());
                 
                 // Define Groups
                 ctx.groups = [];
@@ -647,14 +648,14 @@
             if (modVal.includes(cfg.modType)) {
                 ctx.filteredRows.push(row);
                 
-                // Counting Logic (Identification Count):
-                // Count number of rows where valid values exist.
-                // For Groups: If at least one replicate in the group has a valid value, it counts as 1.
+                // Counting Logic (Unique Identification Count):
+                // Count unique occurrences of the Modification Column Value (modVal)
+                // for samples/groups that have valid quantitative values.
                 
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const cell = row[colIdx];
                     if (isValidValue(cell)) {
-                        ctx.sampleCounts[i]++;
+                        ctx.sampleSets[i].add(modVal);
                     }
                 });
                 
@@ -668,7 +669,7 @@
                         }
                     }
                     if (hasValue) {
-                        ctx.groupCounts[gIdx]++;
+                        ctx.groupSets[gIdx].add(modVal);
                     }
                 });
             }
@@ -682,7 +683,9 @@
             updateProgress(95, "Calculating Statistics...");
             
             setTimeout(() => {
-                // Counts are already calculated during processing
+                // Compute final counts from Sets (Unique Identification)
+                ctx.sampleCounts = ctx.sampleSets.map(s => s.size);
+                ctx.groupCounts = ctx.groupSets.map(s => s.size);
                 
                 // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];
