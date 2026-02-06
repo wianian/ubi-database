@@ -10,6 +10,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <!-- PapaParse for efficient CSV/TSV processing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -122,22 +124,32 @@
                                     <button class="download-btn" id="download-ubi">Download</button>
                                 </div>
                                 
-                                <div class="result-item">
-                                    <i class="fas fa-chart-bar"></i>
-                                    <div class="result-info">
-                                        <h4>Sample Identification Count</h4>
-                                        <p>Number of valid values per sample</p>
+                                <div class="result-block" style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                                        <i class="fas fa-chart-bar" style="font-size: 2rem; color: #28a745; margin-right: 20px; width: 40px; text-align: center;"></i>
+                                        <div class="result-info" style="flex: 1;">
+                                            <h4 style="margin: 0 0 5px 0; color: #333;">Sample Identification Count</h4>
+                                            <p style="margin: 0; color: #666; font-size: 0.9rem;">Number of valid values per sample</p>
+                                        </div>
+                                        <button class="download-btn" id="download-sample">Download</button>
                                     </div>
-                                    <button class="download-btn" id="download-sample">Download</button>
+                                    <div style="height: 300px; width: 100%;">
+                                        <canvas id="sample-chart"></canvas>
+                                    </div>
                                 </div>
                                 
-                                <div class="result-item">
-                                    <i class="fas fa-layer-group"></i>
-                                    <div class="result-info">
-                                        <h4>Group Identification Count</h4>
-                                        <p>Number of valid identifications per biological group</p>
+                                <div class="result-block" style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+                                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                                        <i class="fas fa-layer-group" style="font-size: 2rem; color: #28a745; margin-right: 20px; width: 40px; text-align: center;"></i>
+                                        <div class="result-info" style="flex: 1;">
+                                            <h4 style="margin: 0 0 5px 0; color: #333;">Group Identification Count</h4>
+                                            <p style="margin: 0; color: #666; font-size: 0.9rem;">Number of valid identifications per biological group</p>
+                                        </div>
+                                        <button class="download-btn" id="download-group">Download</button>
                                     </div>
-                                    <button class="download-btn" id="download-group">Download</button>
+                                    <div style="height: 300px; width: 100%;">
+                                        <canvas id="group-chart"></canvas>
+                                    </div>
                                 </div>
                             </div>
                             <button class="reset-btn" id="reset-btn">Analyze Another File</button>
@@ -372,6 +384,12 @@
             });
         }
 
+        function isValidValue(cell) {
+            if (cell === undefined || cell === null || cell === "") return false;
+            const str = String(cell).trim().toUpperCase();
+            return str !== "NAN" && str !== "NA";
+        }
+
         function processRow(row, rowIndex) {
             const ctx = analysisContext;
             const cfg = ctx.config;
@@ -430,7 +448,7 @@
                 // Statistics (only for filtered rows)
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const cell = row[colIdx];
-                    if (cell !== undefined && cell !== null && cell !== "") {
+                    if (isValidValue(cell)) {
                         ctx.sampleCounts[i]++;
                     }
                 });
@@ -439,7 +457,7 @@
                     let hasValue = false;
                     for (let colIdx of group.cols) {
                         const cell = row[colIdx];
-                        if (cell !== undefined && cell !== null && cell !== "") {
+                        if (isValidValue(cell)) {
                             hasValue = true;
                             break;
                         }
@@ -519,10 +537,97 @@
             document.getElementById('loading-overlay').style.display = 'none';
         }
         
+        let charts = { sample: null, group: null };
+
         function showResults() {
             document.querySelector('.tool-form').style.display = 'none';
             document.getElementById('results-section').style.display = 'block';
+            
+            // Render Charts
+            setTimeout(renderCharts, 100);
         }
+
+        function renderCharts() {
+            const ctx = analysisContext;
+            const header = ctx.header;
+
+            // Destroy existing charts
+            if (charts.sample) { charts.sample.destroy(); charts.sample = null; }
+            if (charts.group) { charts.group.destroy(); charts.group = null; }
+
+            // Sample Chart
+            const sampleLabels = ctx.dataColIndices.map(i => header[i]);
+            const sampleData = ctx.sampleCounts;
+            
+            const sampleCtx = document.getElementById('sample-chart').getContext('2d');
+            charts.sample = new Chart(sampleCtx, {
+                type: 'bar',
+                data: {
+                    labels: sampleLabels,
+                    datasets: [{
+                        label: 'Identification Count',
+                        data: sampleData,
+                        backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Count' }
+                        },
+                        x: {
+                            ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Sample Identification Counts' }
+                    }
+                }
+            });
+
+            // Group Chart
+            const groupLabels = ctx.groups.map(g => g.name);
+            const groupData = ctx.groupCounts;
+            
+            const groupCtx = document.getElementById('group-chart').getContext('2d');
+            charts.group = new Chart(groupCtx, {
+                type: 'bar',
+                data: {
+                    labels: groupLabels,
+                    datasets: [{
+                        label: 'Group Identification Count',
+                        data: groupData,
+                        backgroundColor: 'rgba(0, 51, 102, 0.6)',
+                        borderColor: 'rgba(0, 51, 102, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Count' }
+                        },
+                        x: {
+                            ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        title: { display: true, text: 'Group Identification Counts' }
+                    }
+                }
+            });
+        }
+
         
         function downloadFile(type) {
             if (!readyData[type]) return;
@@ -627,6 +732,10 @@
             document.getElementById('analysis-form').reset();
             readyData = {};
             analysisContext = {};
+            
+            // Destroy charts
+            if (charts.sample) { charts.sample.destroy(); charts.sample = null; }
+            if (charts.group) { charts.group.destroy(); charts.group = null; }
         });
     </script>
     
