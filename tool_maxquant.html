@@ -116,53 +116,57 @@
                             <h3><i class="fas fa-poll"></i> Analysis Results</h3>
                             
                             <div class="results-container">
-                                <!-- Sidebar for Downloads/Actions -->
-                                <div class="results-sidebar">
-                                    <div class="result-card">
+                                <!-- Top Section: Filtered Data -->
+                                <div class="result-card top-section">
+                                    <div class="card-left">
                                         <div class="card-header">
                                             <i class="fas fa-file-excel"></i>
-                                            <h4>Filtered Data</h4>
+                                            <h4>Filtered Data (Ubiquitinated)</h4>
                                         </div>
-                                        <p>Ubiquitinated rows only</p>
-                                        <button class="download-btn full-width" id="download-ubi">Download</button>
+                                        <p>Rows containing [GlyGly (K)] in the specified column</p>
                                     </div>
-                                    
-                                    <div class="result-card">
-                                        <div class="card-header">
-                                            <i class="fas fa-chart-bar"></i>
-                                            <h4>Sample Counts</h4>
-                                        </div>
-                                        <p>Valid values per sample</p>
-                                        <button class="download-btn full-width" id="download-sample">Download</button>
+                                    <div class="card-right">
+                                        <button class="download-btn" id="download-ubi"><i class="fas fa-download"></i> Download Filtered Data</button>
                                     </div>
-                                    
-                                    <div class="result-card">
-                                        <div class="card-header">
-                                            <i class="fas fa-layer-group"></i>
-                                            <h4>Group Counts</h4>
-                                        </div>
-                                        <p>Valid IDs per group</p>
-                                        <button class="download-btn full-width" id="download-group">Download</button>
-                                    </div>
-
-                                    <button class="reset-btn full-width" id="reset-btn">Analyze Another File</button>
                                 </div>
 
-                                <!-- Main Area for Charts -->
-                                <div class="results-charts">
+                                <!-- Row 1: Sample Identification -->
+                                <div class="chart-row">
                                     <div class="chart-wrapper">
                                         <h4>Sample Identification Count</h4>
                                         <div class="canvas-container">
                                             <canvas id="sample-chart"></canvas>
                                         </div>
                                     </div>
-                                    
+                                    <div class="chart-actions">
+                                        <div class="action-content">
+                                            <h4>Sample Data</h4>
+                                            <p>Valid identification counts per sample</p>
+                                            <button class="download-btn" id="download-sample"><i class="fas fa-download"></i> Download CSV</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 2: Group Identification -->
+                                <div class="chart-row">
                                     <div class="chart-wrapper">
                                         <h4>Group Identification Count</h4>
                                         <div class="canvas-container">
                                             <canvas id="group-chart"></canvas>
                                         </div>
                                     </div>
+                                    <div class="chart-actions">
+                                        <div class="action-content">
+                                            <h4>Group Data</h4>
+                                            <p>Valid identification counts per biological group</p>
+                                            <button class="download-btn" id="download-group"><i class="fas fa-download"></i> Download CSV</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Reset Button -->
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <button class="reset-btn" id="reset-btn">Analyze Another File</button>
                                 </div>
                             </div>
                         </div>
@@ -207,33 +211,24 @@
         /* New Results Layout Styles */
         .results-container {
             display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .results-sidebar {
-            flex: 1;
-            min-width: 250px;
-            display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 25px;
         }
 
-        .results-charts {
-            flex: 3;
-            min-width: 400px;
+        /* Top Section: Filtered Data */
+        .result-card.top-section {
             display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .result-card {
+            justify-content: space-between;
+            align-items: center;
             background: white;
-            padding: 15px;
-            border-radius: 6px;
+            padding: 20px;
+            border-radius: 8px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             border: 1px solid #eee;
         }
+        
+        .card-left { flex: 1; }
+        .card-right { margin-left: 20px; }
 
         .result-card .card-header {
             display: flex;
@@ -252,18 +247,21 @@
         .result-card .card-header h4 {
             margin: 0;
             color: #333;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
         }
 
         .result-card p {
-            margin: 0 0 12px 0;
+            margin: 0;
             color: #666;
-            font-size: 0.9rem;
-            padding-left: 40px; /* Align with text */
+            font-size: 0.95rem;
+            padding-left: 40px; 
         }
 
-        .full-width {
-            width: 100%;
+        /* Chart Rows */
+        .chart-row {
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
         }
 
         .chart-wrapper {
@@ -272,7 +270,34 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid #eee;
-            flex: 1; /* Distribute height equally if needed */
+            flex: 3; /* Increased width for chart */
+            min-width: 0; /* Prevent flex overflow */
+        }
+
+        .chart-actions {
+            flex: 1;
+            min-width: 200px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .action-content h4 {
+            color: #003366;
+            margin: 0 0 10px 0;
+        }
+        
+        .action-content p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
         }
 
         .chart-wrapper h4 {
@@ -285,18 +310,53 @@
 
         .canvas-container {
             position: relative;
-            height: 50vh; /* Responsive height */
+            height: 50vh;
             min-height: 400px;
             width: 100%;
         }
 
-        @media (max-width: 768px) {
-            .results-container {
+        .download-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .download-btn:hover { background-color: #218838; }
+
+        @media (max-width: 900px) {
+            .chart-row {
                 flex-direction: column;
             }
-            .results-charts {
-                min-width: 100%;
+            .chart-actions {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+                text-align: left;
             }
+            .action-content {
+                display: flex;
+                align-items: center;
+                gap: 20px;
+                width: 100%;
+            }
+            .action-content h4, .action-content p {
+                margin: 0;
+            }
+        }
+        
+        @media (max-width: 600px) {
+             .top-section { flex-direction: column; text-align: center; }
+             .card-right { margin: 15px 0 0 0; }
+             .action-content { flex-direction: column; text-align: center; }
         }
     </style>
 
@@ -813,8 +873,8 @@
             if (!readyData[type]) return;
             
             const btn = document.getElementById(`download-${type}`);
-            const originalText = btn.textContent;
-            btn.textContent = "Generating...";
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
             btn.disabled = true;
             
             // Allow UI to update
@@ -851,7 +911,7 @@
                 } catch (err) {
                     alert("Error generating file: " + err.message + "\n\nTry filtering for a smaller subset if possible.");
                 } finally {
-                    btn.textContent = originalText;
+                    btn.innerHTML = originalHTML;
                     btn.disabled = false;
                 }
             }, 50);
