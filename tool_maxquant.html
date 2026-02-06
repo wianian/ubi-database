@@ -114,45 +114,57 @@
                         
                         <div class="tool-results" id="results-section" style="display: none;">
                             <h3><i class="fas fa-poll"></i> Analysis Results</h3>
-                            <div class="results-list">
-                                <div class="result-item">
-                                    <i class="fas fa-file-excel"></i>
-                                    <div class="result-info">
-                                        <h4>Filtered Data (Ubiquitinated)</h4>
-                                        <p>Contains only rows with specified modification</p>
-                                    </div>
-                                    <button class="download-btn" id="download-ubi">Download</button>
-                                </div>
-                                
-                                <div class="result-block" style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                                        <i class="fas fa-chart-bar" style="font-size: 2rem; color: #28a745; margin-right: 20px; width: 40px; text-align: center;"></i>
-                                        <div class="result-info" style="flex: 1;">
-                                            <h4 style="margin: 0 0 5px 0; color: #333;">Sample Identification Count</h4>
-                                            <p style="margin: 0; color: #666; font-size: 0.9rem;">Number of valid values per sample</p>
+                            
+                            <div class="results-container">
+                                <!-- Sidebar for Downloads/Actions -->
+                                <div class="results-sidebar">
+                                    <div class="result-card">
+                                        <div class="card-header">
+                                            <i class="fas fa-file-excel"></i>
+                                            <h4>Filtered Data</h4>
                                         </div>
-                                        <button class="download-btn" id="download-sample">Download</button>
+                                        <p>Ubiquitinated rows only</p>
+                                        <button class="download-btn full-width" id="download-ubi">Download</button>
                                     </div>
-                                    <div style="height: 300px; width: 100%;">
-                                        <canvas id="sample-chart"></canvas>
-                                    </div>
-                                </div>
-                                
-                                <div class="result-block" style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
-                                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                                        <i class="fas fa-layer-group" style="font-size: 2rem; color: #28a745; margin-right: 20px; width: 40px; text-align: center;"></i>
-                                        <div class="result-info" style="flex: 1;">
-                                            <h4 style="margin: 0 0 5px 0; color: #333;">Group Identification Count</h4>
-                                            <p style="margin: 0; color: #666; font-size: 0.9rem;">Number of valid identifications per biological group</p>
+                                    
+                                    <div class="result-card">
+                                        <div class="card-header">
+                                            <i class="fas fa-chart-bar"></i>
+                                            <h4>Sample Counts</h4>
                                         </div>
-                                        <button class="download-btn" id="download-group">Download</button>
+                                        <p>Valid values per sample</p>
+                                        <button class="download-btn full-width" id="download-sample">Download</button>
                                     </div>
-                                    <div style="height: 300px; width: 100%;">
-                                        <canvas id="group-chart"></canvas>
+                                    
+                                    <div class="result-card">
+                                        <div class="card-header">
+                                            <i class="fas fa-layer-group"></i>
+                                            <h4>Group Counts</h4>
+                                        </div>
+                                        <p>Valid IDs per group</p>
+                                        <button class="download-btn full-width" id="download-group">Download</button>
+                                    </div>
+
+                                    <button class="reset-btn full-width" id="reset-btn">Analyze Another File</button>
+                                </div>
+
+                                <!-- Main Area for Charts -->
+                                <div class="results-charts">
+                                    <div class="chart-wrapper">
+                                        <h4>Sample Identification Count</h4>
+                                        <div class="canvas-container">
+                                            <canvas id="sample-chart"></canvas>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="chart-wrapper">
+                                        <h4>Group Identification Count</h4>
+                                        <div class="canvas-container">
+                                            <canvas id="group-chart"></canvas>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <button class="reset-btn" id="reset-btn">Analyze Another File</button>
                         </div>
                         
                         <div class="loading-overlay" id="loading-overlay" style="display: none;">
@@ -191,6 +203,101 @@
         .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #003366; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         .progress-container { background-color: #e0e0e0; border-radius: 5px; overflow: hidden; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* New Results Layout Styles */
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .results-sidebar {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .results-charts {
+            flex: 3;
+            min-width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .result-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+
+        .result-card .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .result-card .card-header i {
+            font-size: 1.5rem;
+            color: #28a745;
+            margin-right: 10px;
+            width: 30px;
+            text-align: center;
+        }
+
+        .result-card .card-header h4 {
+            margin: 0;
+            color: #333;
+            font-size: 1.1rem;
+        }
+
+        .result-card p {
+            margin: 0 0 12px 0;
+            color: #666;
+            font-size: 0.9rem;
+            padding-left: 40px; /* Align with text */
+        }
+
+        .full-width {
+            width: 100%;
+        }
+
+        .chart-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border: 1px solid #eee;
+            flex: 1; /* Distribute height equally if needed */
+        }
+
+        .chart-wrapper h4 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #003366;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .canvas-container {
+            position: relative;
+            height: 50vh; /* Responsive height */
+            min-height: 400px;
+            width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            .results-container {
+                flex-direction: column;
+            }
+            .results-charts {
+                min-width: 100%;
+            }
+        }
     </style>
 
     <script>
