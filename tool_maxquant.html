@@ -357,9 +357,9 @@
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value); // Use raw value to ensure coverage (effective index + 1 if 0-based, or just covering the range fully)
+            const colEnd = parseInt(document.getElementById('col-end').value) - 1; // 0-based inclusive
             
-            if (colStart < 0 || colEnd <= colStart) {
+            if (colStart < 0 || colEnd < colStart) {
                 showError("Invalid column range.");
                 return;
             }
@@ -617,84 +617,38 @@
                 }
                 
                 // Initialize Data Column Indices
-                // Loop through the range. Using <= colEnd where colEnd is the user's input number (1-based index equivalent to 0-based index + 1)
-                // This ensures we cover the full range intended by the user, including potentially the "Total" column and all samples.
-                for (let i = cfg.colStart; i < cfg.colEnd; i++) { // Changed to < because colEnd is now the exclusive upper bound (input value)
-                     // Wait, if input is 95, colEnd is 95. i goes 5 to 94. Count 90.
-                     // The user said "Last bar missing" with 90 columns.
-                     // So we need 91 columns.
-                     // So we should go <= colEnd if colEnd was user input?
-                     // Let's stick to <= colEnd to match the "buggy" behavior that worked for coverage.
-                }
-                
-                // REVISION: The user wants 91 columns but inputs 6-95.
-                // We will use <= colEnd to capture indices 5..95 (Count 91).
                 for (let i = cfg.colStart; i <= cfg.colEnd; i++) {
                     ctx.dataColIndices.push(i);
                 }
                 
                 // Validate Group/Replicates match
-                // Special handling: If total columns % replicates == 1, and total > replicates
-                // We assume the first column is a "Total" or "Summary" column and exclude it from the replicate grouping check.
-                let groupingStartIndex = 0;
-                let hasTotalColumn = false;
-                
-                if (ctx.dataColIndices.length % cfg.repCount === 1 && ctx.dataColIndices.length > cfg.repCount) {
-                     hasTotalColumn = true;
-                     groupingStartIndex = 1;
-                     // console.log("Detected potential Total/Summary column at start. Adjusting grouping.");
-                } else if (ctx.dataColIndices.length % cfg.repCount !== 0) {
+                if (ctx.dataColIndices.length % cfg.repCount !== 0) {
                      const warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
                      console.warn(warningMsg);
                      ctx.warning = warningMsg;
                 }
                 
-                // Initialize Sets for Unique Counting (Sample and Group Identification)
+                // Initialize Sets for Unique Counting
+                // Total Set (Calculated)
+                ctx.totalSet = new Set();
+                
+                // Sample Sets
                 ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
                 
-                // Calculate Number of Groups
-                // If hasTotalColumn, we have 1 special group + (Rest / Reps) groups.
-                let numGroups;
-                if (hasTotalColumn) {
-                    numGroups = 1 + Math.floor((ctx.dataColIndices.length - 1) / cfg.repCount);
-                } else {
-                    numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                }
-                
+                // Group Sets
+                const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
                 ctx.groupSets = new Array(numGroups).fill(null).map(() => new Set());
                 
                 // Define Groups
                 ctx.groups = [];
-                
-                if (hasTotalColumn) {
-                    // Add Total Column as first Group
-                    const totalColIdx = ctx.dataColIndices[0];
+                for (let g = 0; g < numGroups; g++) {
+                    const start = g * cfg.repCount;
+                    const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                    const name = row[groupCols[0]] || `Group ${g+1}`; 
                     ctx.groups.push({
-                        cols: [totalColIdx],
-                        name: row[totalColIdx] || "Total"
+                        cols: groupCols,
+                        name: name
                     });
-                    
-                    // Add remaining groups
-                    for (let g = 0; g < numGroups - 1; g++) {
-                        const start = 1 + (g * cfg.repCount); // Offset by 1
-                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                        const name = row[groupCols[0]] || `Group ${g+1}`; 
-                        ctx.groups.push({
-                            cols: groupCols,
-                            name: name
-                        });
-                    }
-                } else {
-                    // Standard Grouping
-                    for (let g = 0; g < numGroups; g++) {
-                        const start = g * cfg.repCount;
-                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                        const name = row[groupCols[0]] || `Group ${g+1}`; 
-                        ctx.groups.push({
-                            cols: groupCols,
-                            name: name
-                        });
-                    }
                 }
                 
                 ctx.filteredRows.push(row);
@@ -716,12 +670,19 @@
                 // Count unique occurrences of the Unique ID Column Value (uniqueVal)
                 // for samples/groups that have valid quantitative values.
                 
+                let isIdentifiedInAny = false;
+
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const cell = row[colIdx];
                     if (isValidValue(cell)) {
                         ctx.sampleSets[i].add(uniqueVal);
+                        isIdentifiedInAny = true;
                     }
                 });
+                
+                if (isIdentifiedInAny) {
+                    ctx.totalSet.add(uniqueVal);
+                }
                 
                 ctx.groups.forEach((group, gIdx) => {
                     let hasValue = false;
@@ -748,11 +709,16 @@
             
             setTimeout(() => {
                 // Compute final counts from Sets (Unique Identification)
+                ctx.totalCount = ctx.totalSet.size;
                 ctx.sampleCounts = ctx.sampleSets.map(s => s.size);
                 ctx.groupCounts = ctx.groupSets.map(s => s.size);
                 
                 // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];
+                
+                // Add Total Row
+                sampleStats.push(["Total", ctx.totalCount]);
+                
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const colName = header[colIdx];
                     sampleStats.push([colName, ctx.sampleCounts[i]]);
@@ -760,6 +726,10 @@
                 
                 // Prepare Group Stats Data (Array of Arrays)
                 const groupStats = [["Group", "Columns", "Identification_Count"]];
+                
+                // Add Total Row
+                groupStats.push(["Total", "All Columns", ctx.totalCount]);
+                
                 ctx.groups.forEach((group, i) => {
                     const groupColNames = group.cols.map(idx => header[idx]).join(", ");
                     groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
@@ -839,8 +809,8 @@
             if (charts.group) { charts.group.destroy(); charts.group = null; }
 
             // Sample Chart
-            const sampleLabels = ctx.dataColIndices.map(i => header[i]);
-            const sampleData = ctx.sampleCounts;
+            const sampleLabels = ["Total", ...ctx.dataColIndices.map(i => header[i])];
+            const sampleData = [ctx.totalCount, ...ctx.sampleCounts];
             
             const sampleCtx = document.getElementById('sample-chart').getContext('2d');
             charts.sample = new Chart(sampleCtx, {
@@ -875,8 +845,8 @@
             });
 
             // Group Chart
-            const groupLabels = ctx.groups.map(g => g.name);
-            const groupData = ctx.groupCounts;
+            const groupLabels = ["Total", ...ctx.groups.map(g => g.name)];
+            const groupData = [ctx.totalCount, ...ctx.groupCounts];
             
             const groupCtx = document.getElementById('group-chart').getContext('2d');
             charts.group = new Chart(groupCtx, {
