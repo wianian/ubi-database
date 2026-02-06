@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaxQuant Tool (Standalone) - Ubi Database</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS for Excel processing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>PHD Research Group of Phoenix Center</h1>
+            <h2>Chinese National Protein Science Center</h2>
+            <h3>Made in China</h3>
+            <nav class="main-nav">
+                <ul class="nav-list">
+                    <li class="nav-item">
+                        <a href="index.html">Home</a>
+                        <ul class="dropdown">
+                            <li><a href="#">Home 1</a></li>
+                            <li><a href="#">Home 2</a></li>
+                            <li><a href="#">Home 3</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#">Tools</a>
+                        <ul class="dropdown">
+                            <li class="nested-dropdown">
+                                <a href="#">Search software <i class="fas fa-chevron-right"></i></a>
+                                <ul class="dropdown-submenu">
+                                    <li><a href="tool_maxquant.html">MaxQuant</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#">Datasets</a>
+                        <ul class="dropdown">
+                            <li><a href="#">Crab-eating Macaque</a></li>
+                            <li><a href="#">Yeast</a></li>
+                            <li><a href="#">HeLa Cells</a></li>
+                            <li><a href="#">Housefly</a></li>
+                            <li><a href="#">Mouse</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item"><a href="#">Help</a></li>
+                    <li class="nav-item"><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="header-right">
+            <button class="login-btn">Log in</button>
+        </div>
+    </header>
+    
+    <!-- Main Content Container -->
+    <div class="main-container">
+        <div class="content-section" style="display: block;">
+            <div class="data-window">
+                <div class="window-header">MaxQuant Analysis Tool</div>
+                <div class="window-content" style="padding: 40px;">
+                    <div class="tool-container">
+                        <div class="tool-form">
+                            <h3><i class="fas fa-file-upload"></i> Upload & Configure</h3>
+                            <form id="analysis-form">
+                                <div class="form-group">
+                                    <label for="file-upload">Upload MaxQuant Result File (.xlsx, .tsv, .txt)</label>
+                                    <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="modification-type">Modification Type</label>
+                                    <select id="modification-type" name="modification_type" required>
+                                        <option value="[GlyGly (K)]">Ubiquitination [GlyGly (K)]</option>
+                                    </select>
+                                    <small>Filters rows containing exactly: [GlyGly (K)]</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="mod-column-index">Modification Column Number</label>
+                                    <input type="number" id="mod-column-index" name="mod_column_index" min="1" placeholder="e.g. 5" required>
+                                    <small>Enter the column number (1-based index) containing modification information</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="rep-count">Biological Replicates Count</label>
+                                    <input type="number" id="rep-count" name="rep_count" min="1" value="3" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="data-columns-range">Experiment Data Columns Range (Start - End)</label>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <input type="number" id="col-start" name="col_start" min="1" placeholder="Start" required style="width: 100px;">
+                                        <span>-</span>
+                                        <input type="number" id="col-end" name="col_end" min="1" placeholder="End" required style="width: 100px;">
+                                    </div>
+                                    <small>Enter the column numbers (1-based index). For example: 10 - 21</small>
+                                </div>
+                                
+                                <button type="submit" class="submit-btn" id="submit-btn">
+                                    <i class="fas fa-cog"></i> Run Analysis
+                                </button>
+                            </form>
+                            <div id="error-message" class="error-message" style="display: none; margin-top: 15px; color: #d9534f;"></div>
+                        </div>
+                        
+                        <div class="tool-results" id="results-section" style="display: none;">
+                            <h3><i class="fas fa-poll"></i> Analysis Results</h3>
+                            <div class="results-list">
+                                <div class="result-item">
+                                    <i class="fas fa-file-excel"></i>
+                                    <div class="result-info">
+                                        <h4>Filtered Data (Ubiquitinated)</h4>
+                                        <p>Contains only rows with specified modification</p>
+                                    </div>
+                                    <button class="download-btn" id="download-ubi">Download</button>
+                                </div>
+                                
+                                <div class="result-item">
+                                    <i class="fas fa-chart-bar"></i>
+                                    <div class="result-info">
+                                        <h4>Sample Identification Count</h4>
+                                        <p>Number of valid values per sample</p>
+                                    </div>
+                                    <button class="download-btn" id="download-sample">Download</button>
+                                </div>
+                                
+                                <div class="result-item">
+                                    <i class="fas fa-layer-group"></i>
+                                    <div class="result-info">
+                                        <h4>Group Identification Count</h4>
+                                        <p>Number of valid identifications per biological group</p>
+                                    </div>
+                                    <button class="download-btn" id="download-group">Download</button>
+                                </div>
+                            </div>
+                            <button class="reset-btn" id="reset-btn">Analyze Another File</button>
+                        </div>
+                        
+                        <div class="loading-overlay" id="loading-overlay" style="display: none;">
+                            <div class="spinner"></div>
+                            <p>Processing data... This may take a moment.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <style>
+        .tool-container { max-width: 800px; margin: 0 auto; text-align: left; }
+        .tool-form, .tool-results { background: #f9f9f9; padding: 30px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; }
+        .tool-form h3, .tool-results h3 { margin-top: 0; margin-bottom: 25px; color: #003366; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+        .form-group small { display: block; margin-top: 5px; color: #666; font-size: 0.85rem; }
+        .submit-btn { background-color: #003366; color: white; border: none; padding: 12px 25px; font-size: 1.1rem; border-radius: 4px; cursor: pointer; width: 100%; transition: background 0.3s; }
+        .submit-btn:hover { background-color: #002244; }
+        .result-item { display: flex; align-items: center; background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .result-item i { font-size: 2rem; color: #28a745; margin-right: 20px; width: 40px; text-align: center; }
+        .result-info { flex: 1; }
+        .result-info h4 { margin: 0 0 5px 0; color: #333; }
+        .result-info p { margin: 0; color: #666; font-size: 0.9rem; }
+        .download-btn { background-color: #28a745; color: white; padding: 8px 15px; border-radius: 4px; border: none; font-weight: 500; cursor: pointer; transition: background 0.3s; }
+        .download-btn:hover { background-color: #218838; }
+        .reset-btn { background: none; border: 1px solid #ccc; padding: 8px 15px; border-radius: 4px; cursor: pointer; color: #666; margin-top: 10px; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #003366; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+
+    <script>
+        let resultWorkbooks = {};
+        
+        document.getElementById('analysis-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('file-upload');
+            const modType = "[GlyGly (K)]";
+            const modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
+            const repCount = parseInt(document.getElementById('rep-count').value);
+            const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
+            const colEnd = parseInt(document.getElementById('col-end').value); // 0-based exclusive in logic, but slice works fine
+            
+            if (colStart < 0 || colEnd <= colStart) {
+                showError("Invalid column range.");
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            if (!file) return;
+            
+            showLoading(true);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                    
+                    if (jsonData.length < 1) throw new Error("File is empty");
+                    
+                    const header = jsonData[0];
+                    if (modColIndex >= header.length || colEnd > header.length) {
+                        throw new Error(`Column indices out of bounds. File has ${header.length} columns.`);
+                    }
+                    
+                    // Filter Logic
+                    const filteredRows = [header];
+                    const dataRows = jsonData.slice(1);
+                    
+                    for (let row of dataRows) {
+                        const modVal = row[modColIndex] ? String(row[modColIndex]) : "";
+                        if (modVal.includes(modType)) {
+                            filteredRows.push(row);
+                        }
+                    }
+                    
+                    // Create Filtered Workbook
+                    const ubiWs = XLSX.utils.aoa_to_sheet(filteredRows);
+                    const ubiWb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
+                    
+                    // Statistics per Sample
+                    // Data columns indices: colStart to colEnd-1
+                    const sampleStats = [["Sample", "Identification_Count"]];
+                    const dataColIndices = [];
+                    for (let i = colStart; i < colEnd; i++) dataColIndices.push(i);
+                    
+                    dataColIndices.forEach(colIdx => {
+                        let count = 0;
+                        for (let i = 1; i < filteredRows.length; i++) {
+                            const cell = filteredRows[i][colIdx];
+                            if (cell !== undefined && cell !== null && cell !== "") count++;
+                        }
+                        sampleStats.push([header[colIdx], count]);
+                    });
+                    
+                    const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
+                    const sampleWb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
+                    
+                    // Statistics per Group
+                    if (dataColIndices.length % repCount !== 0) {
+                        throw new Error(`Number of selected columns (${dataColIndices.length}) is not a multiple of replicates (${repCount}).`);
+                    }
+                    
+                    const groupStats = [["Group", "Columns", "Identification_Count"]];
+                    const numGroups = dataColIndices.length / repCount;
+                    
+                    for (let g = 0; g < numGroups; g++) {
+                        const start = g * repCount;
+                        const groupCols = dataColIndices.slice(start, start + repCount);
+                        const groupNames = groupCols.map(idx => header[idx]);
+                        
+                        // Determine Group Name (Common Prefix)
+                        let prefix = groupNames[0]; // Simple logic
+                        // A more robust common prefix logic could be added here
+                        
+                        let groupCount = 0;
+                        for (let i = 1; i < filteredRows.length; i++) {
+                            // Check if ANY column in this group has a value
+                            let hasValue = false;
+                            for (let colIdx of groupCols) {
+                                const cell = filteredRows[i][colIdx];
+                                if (cell !== undefined && cell !== null && cell !== "") {
+                                    hasValue = true;
+                                    break;
+                                }
+                            }
+                            if (hasValue) groupCount++;
+                        }
+                        
+                        groupStats.push([prefix, groupNames.join(", "), groupCount]);
+                    }
+                    
+                    const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
+                    const groupWb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
+                    
+                    // Store results for download
+                    resultWorkbooks = {
+                        ubi: ubiWb,
+                        sample: sampleWb,
+                        group: groupWb,
+                        baseName: file.name.split('.')[0]
+                    };
+                    
+                    showResults();
+                    
+                } catch (err) {
+                    showError(err.message);
+                } finally {
+                    showLoading(false);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+        
+        function downloadFile(type) {
+            if (!resultWorkbooks[type]) return;
+            const suffix = type === 'ubi' ? '_ubi.xlsx' : (type === 'sample' ? '_identification_count_per_sample.xlsx' : '_identification_count_per_group.xlsx');
+            XLSX.writeFile(resultWorkbooks[type], resultWorkbooks.baseName + suffix);
+        }
+        
+        document.getElementById('download-ubi').onclick = () => downloadFile('ubi');
+        document.getElementById('download-sample').onclick = () => downloadFile('sample');
+        document.getElementById('download-group').onclick = () => downloadFile('group');
+        
+        document.getElementById('reset-btn').onclick = function() {
+            document.querySelector('.tool-form').style.display = 'block';
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('analysis-form').reset();
+            document.getElementById('error-message').style.display = 'none';
+        };
+        
+        function showLoading(show) {
+            document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+        }
+        
+        function showError(msg) {
+            const el = document.getElementById('error-message');
+            el.textContent = "Error: " + msg;
+            el.style.display = 'block';
+        }
+        
+        function showResults() {
+            document.querySelector('.tool-form').style.display = 'none';
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+        }
+    </script>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#">An initial version of the China</a>
+            <a href="#">https://www.worldbank/</a>
+        </div>
+        <div class="copyright">
+            &copy; 2025 National Center for Biotechnology Information, Chinese National Library of Medicine
+        </div>
+    </footer>
+</body>
+</html>
