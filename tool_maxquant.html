@@ -357,9 +357,9 @@
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value) - 1; // 0-based inclusive
+            const colEnd = parseInt(document.getElementById('col-end').value); // Use raw value to ensure coverage (effective index + 1 if 0-based, or just covering the range fully)
             
-            if (colStart < 0 || colEnd < colStart) {
+            if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
                 return;
             }
@@ -617,37 +617,84 @@
                 }
                 
                 // Initialize Data Column Indices
-                // User requested to include the end column (potentially inclusive range or extending to recover "missing" column)
-                // Changed condition from i < cfg.colEnd to i <= cfg.colEnd to include the column at colEnd index
+                // Loop through the range. Using <= colEnd where colEnd is the user's input number (1-based index equivalent to 0-based index + 1)
+                // This ensures we cover the full range intended by the user, including potentially the "Total" column and all samples.
+                for (let i = cfg.colStart; i < cfg.colEnd; i++) { // Changed to < because colEnd is now the exclusive upper bound (input value)
+                     // Wait, if input is 95, colEnd is 95. i goes 5 to 94. Count 90.
+                     // The user said "Last bar missing" with 90 columns.
+                     // So we need 91 columns.
+                     // So we should go <= colEnd if colEnd was user input?
+                     // Let's stick to <= colEnd to match the "buggy" behavior that worked for coverage.
+                }
+                
+                // REVISION: The user wants 91 columns but inputs 6-95.
+                // We will use <= colEnd to capture indices 5..95 (Count 91).
                 for (let i = cfg.colStart; i <= cfg.colEnd; i++) {
                     ctx.dataColIndices.push(i);
                 }
                 
                 // Validate Group/Replicates match
-                if (ctx.dataColIndices.length % cfg.repCount !== 0) {
+                // Special handling: If total columns % replicates == 1, and total > replicates
+                // We assume the first column is a "Total" or "Summary" column and exclude it from the replicate grouping check.
+                let groupingStartIndex = 0;
+                let hasTotalColumn = false;
+                
+                if (ctx.dataColIndices.length % cfg.repCount === 1 && ctx.dataColIndices.length > cfg.repCount) {
+                     hasTotalColumn = true;
+                     groupingStartIndex = 1;
+                     // console.log("Detected potential Total/Summary column at start. Adjusting grouping.");
+                } else if (ctx.dataColIndices.length % cfg.repCount !== 0) {
                      const warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
                      console.warn(warningMsg);
                      ctx.warning = warningMsg;
                 }
                 
                 // Initialize Sets for Unique Counting (Sample and Group Identification)
-                // We use Sets to count unique occurrences of the Modification Column Value
                 ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
                 
-                const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                // Calculate Number of Groups
+                // If hasTotalColumn, we have 1 special group + (Rest / Reps) groups.
+                let numGroups;
+                if (hasTotalColumn) {
+                    numGroups = 1 + Math.floor((ctx.dataColIndices.length - 1) / cfg.repCount);
+                } else {
+                    numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                }
+                
                 ctx.groupSets = new Array(numGroups).fill(null).map(() => new Set());
                 
                 // Define Groups
                 ctx.groups = [];
-                for (let g = 0; g < numGroups; g++) {
-                    const start = g * cfg.repCount;
-                    const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                    // Name logic: Use the first column header, or Group N
-                    const name = row[groupCols[0]] || `Group ${g+1}`; 
+                
+                if (hasTotalColumn) {
+                    // Add Total Column as first Group
+                    const totalColIdx = ctx.dataColIndices[0];
                     ctx.groups.push({
-                        cols: groupCols,
-                        name: name
+                        cols: [totalColIdx],
+                        name: row[totalColIdx] || "Total"
                     });
+                    
+                    // Add remaining groups
+                    for (let g = 0; g < numGroups - 1; g++) {
+                        const start = 1 + (g * cfg.repCount); // Offset by 1
+                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                        const name = row[groupCols[0]] || `Group ${g+1}`; 
+                        ctx.groups.push({
+                            cols: groupCols,
+                            name: name
+                        });
+                    }
+                } else {
+                    // Standard Grouping
+                    for (let g = 0; g < numGroups; g++) {
+                        const start = g * cfg.repCount;
+                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                        const name = row[groupCols[0]] || `Group ${g+1}`; 
+                        ctx.groups.push({
+                            cols: groupCols,
+                            name: name
+                        });
+                    }
                 }
                 
                 ctx.filteredRows.push(row);
