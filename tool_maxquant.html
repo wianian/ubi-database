@@ -617,13 +617,23 @@
                 }
                 
                 // Initialize Data Column Indices
+                let removedSpecies = false;
                 for (let i = cfg.colStart; i < cfg.colEnd; i++) {
+                    const colName = row[i];
+                    // Smart filter: Remove "Species" column if detected
+                    if (colName && colName.trim().toLowerCase() === 'species') {
+                        removedSpecies = true;
+                        continue;
+                    }
                     ctx.dataColIndices.push(i);
                 }
                 
                 // Validate Group/Replicates match
                 if (ctx.dataColIndices.length % cfg.repCount !== 0) {
-                     const warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
+                     let warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
+                     if (removedSpecies) {
+                         warningMsg += " (Note: The 'Species' column was automatically excluded from the analysis.)";
+                     }
                      console.warn(warningMsg);
                      ctx.warning = warningMsg;
                 }
