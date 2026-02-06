@@ -143,7 +143,10 @@
                                     <div class="chart-wrapper">
                                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
                                             <h4 style="margin: 0; border: none;">Sample Identification Count</h4>
-                                            <button class="download-btn" id="download-sample" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                            <div style="display: flex; gap: 10px;">
+                                                <button class="download-btn" id="download-sample-png" style="padding: 6px 12px; font-size: 0.85rem; background-color: #007bff;"><i class="fas fa-image"></i> Download PNG</button>
+                                                <button class="download-btn" id="download-sample" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                            </div>
                                         </div>
                                         <div class="canvas-container">
                                             <canvas id="sample-chart"></canvas>
@@ -156,7 +159,10 @@
                                     <div class="chart-wrapper">
                                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
                                             <h4 style="margin: 0; border: none;">Group Identification Count</h4>
-                                            <button class="download-btn" id="download-group" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                            <div style="display: flex; gap: 10px;">
+                                                <button class="download-btn" id="download-group-png" style="padding: 6px 12px; font-size: 0.85rem; background-color: #007bff;"><i class="fas fa-image"></i> Download PNG</button>
+                                                <button class="download-btn" id="download-group" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                            </div>
                                         </div>
                                         <div class="canvas-container">
                                             <canvas id="group-chart"></canvas>
@@ -993,6 +999,33 @@
         document.getElementById('download-ubi').addEventListener('click', () => downloadFile('ubi'));
         document.getElementById('download-sample').addEventListener('click', () => downloadFile('sample'));
         document.getElementById('download-group').addEventListener('click', () => downloadFile('group'));
+        
+        document.getElementById('download-sample-png').addEventListener('click', () => downloadChartImage('sample-chart', 'Sample_Identification_Count.png'));
+        document.getElementById('download-group-png').addEventListener('click', () => downloadChartImage('group-chart', 'Group_Identification_Count.png'));
+
+        function downloadChartImage(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            if (canvas) {
+                // Create a temporary link
+                const link = document.createElement('a');
+                link.download = filename;
+                // Convert canvas to data URL (PNG)
+                // Set background color to white because canvas is transparent by default
+                const ctx = canvas.getContext('2d');
+                ctx.save();
+                ctx.globalCompositeOperation = 'destination-over';
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                
+                link.href = canvas.toDataURL('image/png');
+                // Trigger download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
         
         document.getElementById('reset-btn').addEventListener('click', function() {
             document.querySelector('.tool-form').style.display = 'block';
