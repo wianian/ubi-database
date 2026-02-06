@@ -357,7 +357,7 @@
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end (exclusive for 0-based loop)
+            const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end
             
             if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
@@ -618,7 +618,13 @@
                 
                 // Initialize Data Column Indices
                 let removedSpecies = false;
-                for (let i = cfg.colStart; i < cfg.colEnd; i++) {
+                
+                // Calculate actual loop limit: min(colEnd, row.length)
+                // We trust user input colEnd, but cap it at row.length just in case
+                // Use <= to ensure we include the last column if the user meant 1-based inclusive
+                const loopEnd = Math.min(cfg.colEnd, row.length);
+                
+                for (let i = cfg.colStart; i < loopEnd; i++) {
                     const colName = row[i];
                     // Smart filter: Remove "Species" column if detected
                     if (colName && colName.trim().toLowerCase() === 'species') {
