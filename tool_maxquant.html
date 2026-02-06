@@ -536,57 +536,31 @@
             setTimeout(() => {
                 try {
                     const data = readyData[type];
+                    const ROW_LIMIT_FOR_EXCEL = 100000;
                     
-                    // Attempt Excel generation with dense mode (optimizes memory for large files)
-                    try {
-                        const ws = XLSX.utils.aoa_to_sheet(data, { dense: true });
-                        const wb = XLSX.utils.book_new();
-                        const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
-                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
-                        
-                        const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
-                        XLSX.writeFile(wb, readyData.baseName + suffix);
-                    } catch (excelErr) {
-                        console.warn("Excel generation failed, falling back to CSV", excelErr);
-                        // Fallback to Chunked CSV for ANY error during Excel generation for 'ubi'
-                        // This handles "Invalid string length" and "Too many properties"
-                        if (type === 'ubi') {
-                            try {
-                                const chunks = [];
-                                const chunkSize = 2000; // Safe chunk size for string generation
-                                
-                                for (let i = 0; i < data.length; i += chunkSize) {
-                                    const chunkData = data.slice(i, i + chunkSize);
-                                    // Manually handle CSV generation or use PapaParse on small chunks
-                                    const chunkCsv = Papa.unparse(chunkData, { 
-                                        header: false, // data is array of arrays, header is row 0
-                                        skipEmptyLines: true
-                                    });
-                                    
-                                    if (chunkCsv.length > 0) {
-                                        chunks.push(chunkCsv);
-                                        // Add newline between chunks if not the last one
-                                        if (i + chunkSize < data.length) chunks.push("\n");
-                                    }
-                                }
-                                
-                                const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
-                                const link = document.createElement("a");
-                                const url = URL.createObjectURL(blob);
-                                link.setAttribute("href", url);
-                                link.setAttribute("download", readyData.baseName + "_filtered.csv");
-                                link.style.visibility = 'hidden';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                URL.revokeObjectURL(url);
-                                
-                                alert("Note: Due to the extremely large dataset, the file was downloaded as CSV to avoid browser memory limits.");
-                            } catch (csvErr) {
-                                throw new Error("CSV generation also failed: " + csvErr.message);
+                    // Direct CSV fallback for massive datasets to prevent "Invalid string length" errors in Excel library
+                    // or if the data size is known to be problematic
+                    if (type === 'ubi' && data.length > ROW_LIMIT_FOR_EXCEL) {
+                         console.warn("Large dataset detected, skipping Excel generation and using CSV stream.");
+                         generateCsvDirectly(data, readyData.baseName + "_filtered.csv");
+                    } else {
+                        // Attempt Excel generation with dense mode
+                        try {
+                            const ws = XLSX.utils.aoa_to_sheet(data, { dense: true });
+                            const wb = XLSX.utils.book_new();
+                            const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
+                            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                            
+                            const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
+                            XLSX.writeFile(wb, readyData.baseName + suffix);
+                        } catch (excelErr) {
+                            console.warn("Excel generation failed, falling back to CSV", excelErr);
+                            // Fallback to Chunked CSV for ANY error during Excel generation for 'ubi'
+                            if (type === 'ubi') {
+                                generateCsvDirectly(data, readyData.baseName + "_filtered.csv");
+                            } else {
+                                throw excelErr;
                             }
-                        } else {
-                            throw excelErr;
                         }
                     }
                 } catch (err) {
@@ -596,6 +570,50 @@
                     btn.disabled = false;
                 }
             }, 50);
+        }
+        
+        function generateCsvDirectly(data, filename) {
+             try {
+                 const chunks = [];
+                 const chunkSize = 1000; // Safe chunk size
+                 
+                 for (let i = 0; i < data.length; i += chunkSize) {
+                     const chunkData = data.slice(i, i + chunkSize);
+                     // Manual CSV generation to avoid library overhead for simple AOA
+                     const chunkStr = chunkData.map(row => 
+                         row.map(cell => {
+                             if (cell === null || cell === undefined) return "";
+                             const cellStr = String(cell);
+                             // Escape quotes and wrap in quotes if necessary
+                             if (cellStr.includes('"') || cellStr.includes(',') || cellStr.includes('\n')) {
+                                 return `"${cellStr.replace(/"/g, '""')}"`;
+                             }
+                             return cellStr;
+                         }).join(",")
+                     ).join("\n");
+                     
+                     if (chunkStr.length > 0) {
+                         chunks.push(chunkStr);
+                         // Add newline between chunks if not the last one
+                         if (i + chunkSize < data.length) chunks.push("\n");
+                     }
+                 }
+                 
+                 const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
+                 const link = document.createElement("a");
+                 const url = URL.createObjectURL(blob);
+                 link.setAttribute("href", url);
+                 link.setAttribute("download", filename);
+                 link.style.visibility = 'hidden';
+                 document.body.appendChild(link);
+                 link.click();
+                 document.body.removeChild(link);
+                 URL.revokeObjectURL(url);
+                 
+                 alert("Note: Due to the large dataset size, the file was downloaded as CSV to ensure stability.");
+             } catch (csvErr) {
+                 throw new Error("CSV generation also failed: " + csvErr.message);
+             }
         }
         
         document.getElementById('download-ubi').addEventListener('click', () => downloadFile('ubi'));
