@@ -72,8 +72,8 @@
                             <h3><i class="fas fa-file-upload"></i> Upload & Configure</h3>
                             <form id="analysis-form">
                                 <div class="form-group">
-                                    <label for="file-upload">Upload MaxQuant Result File (.xlsx, .tsv, .txt)</label>
-                                    <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt" required>
+                                    <label for="file-upload">Upload MaxQuant Result File (.xlsx, .tsv, .txt, .csv)</label>
+                                    <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt, .csv" required>
                                 </div>
                                 
                                 <div class="form-group">
@@ -353,20 +353,78 @@
             // Use SheetJS for Excel files, PapaParse for Text/CSV/TSV
             if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
                 updateProgress(0, "Reading Excel file... (This might take a while for large files)");
-                // Give UI a moment to update before freezing with sync XLSX read
-                setTimeout(() => processExcel(file), 100);
+                // Offload to Worker to prevent UI freezing
+                setTimeout(() => processExcelWithWorker(file), 100);
             } else {
                 processText(file);
             }
         });
 
-        function processExcel(file) {
+        // Worker Code as a Blob string to avoid external file dependencies
+        const workerCode = `
+            importScripts("https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js");
+            
+            self.onmessage = function(e) {
+                try {
+                    const data = new Uint8Array(e.data);
+                    
+                    self.postMessage({ type: 'progress', percent: 20, text: "Parsing Excel structure..." });
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    self.postMessage({ type: 'progress', percent: 40, text: "Converting sheet to data..." });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                    
+                    if (!jsonData || jsonData.length < 1) {
+                        throw new Error("File is empty or could not be parsed.");
+                    }
+
+                    self.postMessage({ type: 'result', data: jsonData });
+                } catch (err) {
+                    self.postMessage({ type: 'error', message: err.message });
+                }
+            };
+        `;
+
+        function processExcelWithWorker(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    updateProgress(20, "Parsing Excel data... (This may take memory)");
-                    
-                    // Small delay to let UI render
+                    const blob = new Blob([workerCode], {type: 'application/javascript'});
+                    const workerUrl = URL.createObjectURL(blob);
+                    const worker = new Worker(workerUrl);
+
+                    worker.onmessage = function(msg) {
+                        const { type, percent, text, data, message } = msg.data;
+                        
+                        if (type === 'progress') {
+                            updateProgress(percent, text);
+                        } else if (type === 'error') {
+                            showError(message);
+                            worker.terminate();
+                            showLoading(false);
+                        } else if (type === 'result') {
+                            worker.terminate();
+                            processExcelData(data, file.name);
+                        }
+                    };
+
+                    worker.postMessage(e.target.result);
+
+                } catch (err) {
+                    console.error("Worker failed, falling back to main thread", err);
+                    processExcelFallback(file);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processExcelFallback(file) {
+            // Original main-thread logic as fallback
+             const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    updateProgress(20, "Parsing Excel data... (UI may freeze)");
                     setTimeout(() => {
                         try {
                             const data = new Uint8Array(e.target.result);
@@ -376,45 +434,13 @@
                             setTimeout(() => {
                                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                                 const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
-                                
-                                if (jsonData.length < 1) throw new Error("File is empty");
-                                
-                                updateProgress(50, "Processing rows...");
-                                
-                                // Process Header
-                                processRow(jsonData[0], 0);
-                                
-                                // Chunked processing for rows
-                                let i = 1;
-                                const totalRows = jsonData.length;
-                                const chunkSize = 2000; // Process 2000 rows per tick
-                                
-                                function processChunk() {
-                                    const chunkEnd = Math.min(i + chunkSize, totalRows);
-                                    for (; i < chunkEnd; i++) {
-                                        processRow(jsonData[i], i);
-                                    }
-                                    
-                                    // Map 50% -> 90% based on row progress
-                                    const percent = 50 + Math.floor((i / totalRows) * 40);
-                                    updateProgress(percent, `Processing rows ${i}/${totalRows}...`);
-                                    
-                                    if (i < totalRows) {
-                                        setTimeout(processChunk, 0);
-                                    } else {
-                                        finishAnalysis(file.name);
-                                    }
-                                }
-                                
-                                setTimeout(processChunk, 0);
-                                
+                                processExcelData(jsonData, file.name);
                             }, 100);
                         } catch (err) {
                             showError(err.message);
                             showLoading(false);
                         }
                     }, 100);
-                    
                 } catch (err) {
                     showError(err.message);
                     showLoading(false);
@@ -422,6 +448,45 @@
             };
             reader.readAsArrayBuffer(file);
         }
+
+        function processExcelData(jsonData, fileName) {
+            try {
+                 if (jsonData.length < 1) throw new Error("File is empty");
+                                
+                updateProgress(50, "Processing rows...");
+                
+                // Process Header
+                processRow(jsonData[0], 0);
+                
+                // Chunked processing for rows
+                let i = 1;
+                const totalRows = jsonData.length;
+                const chunkSize = 5000; // Increased chunk size since data is ready
+                
+                function processChunk() {
+                    const chunkEnd = Math.min(i + chunkSize, totalRows);
+                    for (; i < chunkEnd; i++) {
+                        processRow(jsonData[i], i);
+                    }
+                    
+                    // Map 50% -> 90% based on row progress
+                    const percent = 50 + Math.floor((i / totalRows) * 40);
+                    updateProgress(percent, `Processing rows ${i}/${totalRows}...`);
+                    
+                    if (i < totalRows) {
+                        setTimeout(processChunk, 0);
+                    } else {
+                        finishAnalysis(fileName);
+                    }
+                }
+                
+                setTimeout(processChunk, 0);
+            } catch (err) {
+                showError(err.message);
+                showLoading(false);
+            }
+        }
+
 
         function processText(file) {
             let rowCount = 0;
