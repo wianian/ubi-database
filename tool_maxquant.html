@@ -133,16 +133,12 @@
                                 <!-- Row 1: Sample Identification -->
                                 <div class="chart-row">
                                     <div class="chart-wrapper">
-                                        <h4>Sample Identification Count</h4>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                                            <h4 style="margin: 0; border: none;">Sample Identification Count</h4>
+                                            <button class="download-btn" id="download-sample" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                        </div>
                                         <div class="canvas-container">
                                             <canvas id="sample-chart"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="chart-actions">
-                                        <div class="action-content">
-                                            <h4>Sample Data</h4>
-                                            <p>Valid identification counts per sample</p>
-                                            <button class="download-btn" id="download-sample"><i class="fas fa-download"></i> Download CSV</button>
                                         </div>
                                     </div>
                                 </div>
@@ -150,16 +146,12 @@
                                 <!-- Row 2: Group Identification -->
                                 <div class="chart-row">
                                     <div class="chart-wrapper">
-                                        <h4>Group Identification Count</h4>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                                            <h4 style="margin: 0; border: none;">Group Identification Count</h4>
+                                            <button class="download-btn" id="download-group" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                        </div>
                                         <div class="canvas-container">
                                             <canvas id="group-chart"></canvas>
-                                        </div>
-                                    </div>
-                                    <div class="chart-actions">
-                                        <div class="action-content">
-                                            <h4>Group Data</h4>
-                                            <p>Valid identification counts per biological group</p>
-                                            <button class="download-btn" id="download-group"><i class="fas fa-download"></i> Download CSV</button>
                                         </div>
                                     </div>
                                 </div>
@@ -270,42 +262,15 @@
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid #eee;
-            flex: 3; /* Increased width for chart */
+            flex: 1; /* Take full width */
             min-width: 0; /* Prevent flex overflow */
         }
-
-        .chart-actions {
-            flex: 1;
-            min-width: 200px;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border: 1px solid #eee;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-        }
-
-        .action-content h4 {
-            color: #003366;
-            margin: 0 0 10px 0;
-        }
         
-        .action-content p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-        }
+        /* Removed .chart-actions styles */
 
         .chart-wrapper h4 {
-            margin-top: 0;
-            margin-bottom: 15px;
+            /* Styles handled inline or via utility in new layout */
             color: #003366;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
         }
 
         .canvas-container {
