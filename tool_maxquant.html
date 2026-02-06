@@ -357,9 +357,9 @@
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value); // 0-based exclusive in logic
+            const colEnd = parseInt(document.getElementById('col-end').value) - 1; // 0-based inclusive
             
-            if (colStart < 0 || colEnd <= colStart) {
+            if (colStart < 0 || colEnd < colStart) {
                 showError("Invalid column range.");
                 return;
             }
@@ -612,8 +612,8 @@
                 if (cfg.uniqueIdColIndex >= row.length) {
                     throw new Error(`Unique ID column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
-                if (cfg.colEnd > row.length) {
-                    throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
+                if (cfg.colEnd >= row.length) {
+                    throw new Error(`Data column end index (${cfg.colEnd + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
                 
                 // Initialize Data Column Indices
