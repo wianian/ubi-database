@@ -121,6 +121,8 @@
                         <div class="tool-results" id="results-section" style="display: none;">
                             <h3><i class="fas fa-poll"></i> Analysis Results</h3>
                             
+                            <div id="warning-container" style="display: none; background-color: #fff3cd; color: #856404; padding: 15px; margin-bottom: 20px; border: 1px solid #ffeeba; border-radius: 4px;"></div>
+
                             <div class="results-container">
                                 <!-- Top Section: Filtered Data -->
                                 <div class="result-card top-section">
@@ -623,7 +625,9 @@
                 
                 // Validate Group/Replicates match
                 if (ctx.dataColIndices.length % cfg.repCount !== 0) {
-                     console.warn(`Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). Grouping might be misaligned.`);
+                     const warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
+                     console.warn(warningMsg);
+                     ctx.warning = warningMsg;
                 }
                 
                 // Initialize Sets for Unique Counting (Sample and Group Identification)
@@ -765,6 +769,15 @@
         function showResults() {
             document.querySelector('.tool-form').style.display = 'none';
             document.getElementById('results-section').style.display = 'block';
+            
+            // Show Warning if exists
+            const warningContainer = document.getElementById('warning-container');
+            if (analysisContext.warning) {
+                warningContainer.textContent = analysisContext.warning;
+                warningContainer.style.display = 'block';
+            } else {
+                warningContainer.style.display = 'none';
+            }
             
             // Render Charts
             setTimeout(renderCharts, 100);
