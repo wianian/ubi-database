@@ -245,27 +245,56 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    updateProgress(50, "Parsing Excel data...");
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                    updateProgress(20, "Parsing Excel data... (This may take memory)");
                     
-                    if (jsonData.length < 1) throw new Error("File is empty");
-                    
-                    updateProgress(80, "Processing rows...");
-                    
-                    // Process Header
-                    processRow(jsonData[0], 0);
-                    
-                    // Process Data
-                    // Use setTimeout to avoid UI freeze if possible, but for array loop it's still sync.
-                    // For Excel we accept it's slower/sync.
-                    for (let i = 1; i < jsonData.length; i++) {
-                        processRow(jsonData[i], i);
-                    }
-                    
-                    finishAnalysis(file.name);
+                    // Small delay to let UI render
+                    setTimeout(() => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, {type: 'array'});
+                            
+                            updateProgress(40, "Converting sheet to data...");
+                            setTimeout(() => {
+                                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                                const jsonData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                                
+                                if (jsonData.length < 1) throw new Error("File is empty");
+                                
+                                updateProgress(50, "Processing rows...");
+                                
+                                // Process Header
+                                processRow(jsonData[0], 0);
+                                
+                                // Chunked processing for rows
+                                let i = 1;
+                                const totalRows = jsonData.length;
+                                const chunkSize = 2000; // Process 2000 rows per tick
+                                
+                                function processChunk() {
+                                    const chunkEnd = Math.min(i + chunkSize, totalRows);
+                                    for (; i < chunkEnd; i++) {
+                                        processRow(jsonData[i], i);
+                                    }
+                                    
+                                    // Map 50% -> 90% based on row progress
+                                    const percent = 50 + Math.floor((i / totalRows) * 40);
+                                    updateProgress(percent, `Processing rows ${i}/${totalRows}...`);
+                                    
+                                    if (i < totalRows) {
+                                        setTimeout(processChunk, 0);
+                                    } else {
+                                        finishAnalysis(file.name);
+                                    }
+                                }
+                                
+                                setTimeout(processChunk, 0);
+                                
+                            }, 100);
+                        } catch (err) {
+                            showError(err.message);
+                            showLoading(false);
+                        }
+                    }, 100);
                     
                 } catch (err) {
                     showError(err.message);
@@ -285,9 +314,11 @@
                 worker: true,
                 chunkSize: 1024 * 1024 * 5, // 5MB chunks
                 chunk: function(results, parser) {
-                    // Update Progress
+                    // Update Progress (Map 0% -> 90%)
                     if (results.meta && results.meta.cursor) {
-                        const percent = Math.min(99, Math.round((results.meta.cursor / fileSize) * 100));
+                        const rawPercent = (results.meta.cursor / fileSize);
+                        const percent = Math.floor(rawPercent * 90); // Max 90% for parsing
+                        
                         const elapsed = (Date.now() - analysisContext.startTime) / 1000;
                         const rate = results.meta.cursor / elapsed; // bytes per second
                         const remainingBytes = fileSize - results.meta.cursor;
@@ -298,7 +329,7 @@
                             etaText = ` - ETA: ${formatTime(eta)}`;
                         }
                         
-                        updateProgress(percent, `Processing... ${percent}%${etaText}`);
+                        updateProgress(percent, `Processing... ${Math.round(rawPercent * 100)}%${etaText}`);
                     }
                     
                     // Process chunk data
@@ -325,7 +356,7 @@
                         return;
                     }
                     try {
-                        updateProgress(100, "Finalizing results...");
+                        updateProgress(90, "Finalizing results...");
                         setTimeout(() => finishAnalysis(file.name), 100);
                     } catch (err) {
                         showError(err.message);
@@ -424,40 +455,53 @@
             const ctx = analysisContext;
             const header = ctx.header;
             
-            // 1. Filtered Data
-            const ubiWs = XLSX.utils.aoa_to_sheet(ctx.filteredRows);
-            const ubiWb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
-            
-            // 2. Sample Stats
-            const sampleStats = [["Sample", "Identification_Count"]];
-            ctx.dataColIndices.forEach((colIdx, i) => {
-                const colName = header[colIdx];
-                sampleStats.push([colName, ctx.sampleCounts[i]]);
-            });
-            const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
-            const sampleWb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
-            
-            // 3. Group Stats
-            const groupStats = [["Group", "Columns", "Identification_Count"]];
-            ctx.groups.forEach((group, i) => {
-                const groupColNames = group.cols.map(idx => header[idx]).join(", ");
-                groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
-            });
-            const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
-            const groupWb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
-            
-            resultWorkbooks = {
-                ubi: ubiWb,
-                sample: sampleWb,
-                group: groupWb,
-                baseName: fileName.split('.')[0]
-            };
-            
-            showLoading(false);
-            showResults();
+            // Step 1: Filtered Data
+            updateProgress(92, "Generating Filtered Report...");
+            setTimeout(() => {
+                const ubiWs = XLSX.utils.aoa_to_sheet(ctx.filteredRows);
+                const ubiWb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
+                
+                // Step 2: Sample Stats
+                updateProgress(95, "Generating Sample Statistics...");
+                setTimeout(() => {
+                    const sampleStats = [["Sample", "Identification_Count"]];
+                    ctx.dataColIndices.forEach((colIdx, i) => {
+                        const colName = header[colIdx];
+                        sampleStats.push([colName, ctx.sampleCounts[i]]);
+                    });
+                    const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
+                    const sampleWb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
+                    
+                    // Step 3: Group Stats
+                    updateProgress(98, "Generating Group Statistics...");
+                    setTimeout(() => {
+                        const groupStats = [["Group", "Columns", "Identification_Count"]];
+                        ctx.groups.forEach((group, i) => {
+                            const groupColNames = group.cols.map(idx => header[idx]).join(", ");
+                            groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
+                        });
+                        const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
+                        const groupWb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
+                        
+                        resultWorkbooks = {
+                            ubi: ubiWb,
+                            sample: sampleWb,
+                            group: groupWb,
+                            baseName: fileName.split('.')[0]
+                        };
+                        
+                        updateProgress(100, "Analysis Complete!");
+                        setTimeout(() => {
+                            showLoading(false);
+                            showResults();
+                        }, 500);
+                        
+                    }, 50); // Delay for Group Stats
+                }, 50); // Delay for Sample Stats
+            }, 50); // Delay for Filtered Data
         }
 
         function showLoading(show) {
