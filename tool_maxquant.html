@@ -89,6 +89,12 @@
                                     <input type="number" id="mod-column-index" name="mod_column_index" min="1" placeholder="e.g. 5" required>
                                     <small>Enter the column number (1-based index) containing modification information</small>
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="unique-id-column-index">Unique ID Column Number</label>
+                                    <input type="number" id="unique-id-column-index" name="unique_id_column_index" min="1" placeholder="e.g. 1" required>
+                                    <small>Enter the column number (1-based index) to use for unique counting (e.g. Protein ID)</small>
+                                </div>
                                 
                                 <div class="form-group">
                                     <label for="rep-count">Biological Replicates Count</label>
@@ -346,6 +352,7 @@
             const fileInput = document.getElementById('file-upload');
             const modType = "[GlyGly (K)]";
             const modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
+            const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
             const colEnd = parseInt(document.getElementById('col-end').value); // 0-based exclusive in logic
@@ -365,7 +372,7 @@
                 sampleCounts: [],
                 groupCounts: [],
                 config: {
-                    modType, modColIndex, repCount, colStart, colEnd
+                    modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
                 groups: [],
@@ -600,6 +607,9 @@
                 if (cfg.modColIndex >= row.length) {
                     throw new Error(`Modification column index (${cfg.modColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
+                if (cfg.uniqueIdColIndex >= row.length) {
+                    throw new Error(`Unique ID column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
+                }
                 if (cfg.colEnd > row.length) {
                     throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
                 }
@@ -645,17 +655,20 @@
             
             // Filtering
             const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
+            // Unique Value for Counting (e.g. Protein ID)
+            const uniqueVal = row[cfg.uniqueIdColIndex] ? String(row[cfg.uniqueIdColIndex]) : "";
+            
             if (modVal.includes(cfg.modType)) {
                 ctx.filteredRows.push(row);
                 
                 // Counting Logic (Unique Identification Count):
-                // Count unique occurrences of the Modification Column Value (modVal)
+                // Count unique occurrences of the Unique ID Column Value (uniqueVal)
                 // for samples/groups that have valid quantitative values.
                 
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const cell = row[colIdx];
                     if (isValidValue(cell)) {
-                        ctx.sampleSets[i].add(modVal);
+                        ctx.sampleSets[i].add(uniqueVal);
                     }
                 });
                 
@@ -669,7 +682,7 @@
                         }
                     }
                     if (hasValue) {
-                        ctx.groupSets[gIdx].add(modVal);
+                        ctx.groupSets[gIdx].add(uniqueVal);
                     }
                 });
             }
