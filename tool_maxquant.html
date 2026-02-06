@@ -357,9 +357,9 @@
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value) - 1; // 0-based inclusive
+            const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end (exclusive for 0-based loop)
             
-            if (colStart < 0 || colEnd < colStart) {
+            if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
                 return;
             }
@@ -612,17 +612,12 @@
                 if (cfg.uniqueIdColIndex >= row.length) {
                     throw new Error(`Unique ID column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
-                if (cfg.colEnd >= row.length) {
-                    throw new Error(`Data column end index (${cfg.colEnd + 1}) is out of bounds. File has ${row.length} columns.`);
+                if (cfg.colEnd > row.length) {
+                    throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
                 }
                 
                 // Initialize Data Column Indices
-                for (let i = cfg.colStart; i <= cfg.colEnd; i++) {
-                    // Filter out "Species" column if included in range
-                    const colName = row[i];
-                    if (colName && colName.trim().toLowerCase() === 'species') {
-                        continue;
-                    }
+                for (let i = cfg.colStart; i < cfg.colEnd; i++) {
                     ctx.dataColIndices.push(i);
                 }
                 
