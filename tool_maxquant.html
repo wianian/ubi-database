@@ -605,25 +605,29 @@
                 }
                 
                 // Initialize Data Column Indices
-                for (let i = cfg.colStart; i < cfg.colEnd; i++) {
+                // User requested to include the end column (potentially inclusive range or extending to recover "missing" column)
+                // Changed condition from i < cfg.colEnd to i <= cfg.colEnd to include the column at colEnd index
+                for (let i = cfg.colStart; i <= cfg.colEnd; i++) {
                     ctx.dataColIndices.push(i);
                 }
                 
                 // Validate Group/Replicates match
                 if (ctx.dataColIndices.length % cfg.repCount !== 0) {
-                    throw new Error(`Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}).`);
+                     console.warn(`Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). Grouping might be misaligned.`);
                 }
                 
-                // Initialize Sets for Unique Counting
-                ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
-                const numGroups = ctx.dataColIndices.length / cfg.repCount;
-                ctx.groupSets = new Array(numGroups).fill(null).map(() => new Set());
+                // Initialize Counts (Numeric counts, not Sets)
+                ctx.sampleCounts = new Uint32Array(ctx.dataColIndices.length).fill(0);
+                
+                const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                ctx.groupCounts = new Uint32Array(numGroups).fill(0);
                 
                 // Define Groups
-                ctx.groups = []; // Reset groups array to avoid duplication if re-run
+                ctx.groups = [];
                 for (let g = 0; g < numGroups; g++) {
                     const start = g * cfg.repCount;
                     const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                    // Name logic: Use the first column header, or Group N
                     const name = row[groupCols[0]] || `Group ${g+1}`; 
                     ctx.groups.push({
                         cols: groupCols,
@@ -643,14 +647,14 @@
             if (modVal.includes(cfg.modType)) {
                 ctx.filteredRows.push(row);
                 
-                // Unique Counting Logic:
-                // Count unique occurrences of the Modification Column Value (modVal)
-                // for samples/groups that have valid quantitative values.
+                // Counting Logic (Identification Count):
+                // Count number of rows where valid values exist.
+                // For Groups: If at least one replicate in the group has a valid value, it counts as 1.
                 
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const cell = row[colIdx];
                     if (isValidValue(cell)) {
-                        ctx.sampleSets[i].add(modVal);
+                        ctx.sampleCounts[i]++;
                     }
                 });
                 
@@ -664,7 +668,7 @@
                         }
                     }
                     if (hasValue) {
-                        ctx.groupSets[gIdx].add(modVal);
+                        ctx.groupCounts[gIdx]++;
                     }
                 });
             }
@@ -678,10 +682,8 @@
             updateProgress(95, "Calculating Statistics...");
             
             setTimeout(() => {
-                // Compute final counts from Sets
-                ctx.sampleCounts = ctx.sampleSets.map(s => s.size);
-                ctx.groupCounts = ctx.groupSets.map(s => s.size);
-
+                // Counts are already calculated during processing
+                
                 // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];
                 ctx.dataColIndices.forEach((colIdx, i) => {
