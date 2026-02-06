@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="styles.css">
     <!-- SheetJS for Excel processing -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <!-- PapaParse for efficient CSV/TSV processing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -177,6 +179,17 @@
     <script>
         let resultWorkbooks = {};
         
+        // Analysis State Context
+        let analysisContext = {
+            header: null,
+            filteredRows: [],
+            sampleCounts: [], 
+            groupCounts: [],
+            config: {},
+            dataColIndices: [],
+            groups: []
+        };
+
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -185,7 +198,7 @@
             const modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
-            const colEnd = parseInt(document.getElementById('col-end').value); // 0-based exclusive in logic, but slice works fine
+            const colEnd = parseInt(document.getElementById('col-end').value); // 0-based exclusive in logic
             
             if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
@@ -195,8 +208,31 @@
             const file = fileInput.files[0];
             if (!file) return;
             
+            // Initialize Context
+            analysisContext = {
+                header: null,
+                filteredRows: [],
+                sampleCounts: [],
+                groupCounts: [],
+                config: {
+                    modType, modColIndex, repCount, colStart, colEnd
+                },
+                dataColIndices: [],
+                groups: []
+            };
+            
             showLoading(true);
             
+            const fileName = file.name.toLowerCase();
+            // Use SheetJS for Excel files, PapaParse for Text/CSV/TSV
+            if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+                processExcel(file);
+            } else {
+                processText(file);
+            }
+        });
+
+        function processExcel(file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -207,136 +243,214 @@
                     
                     if (jsonData.length < 1) throw new Error("File is empty");
                     
-                    const header = jsonData[0];
-                    if (modColIndex >= header.length || colEnd > header.length) {
-                        throw new Error(`Column indices out of bounds. File has ${header.length} columns.`);
+                    // Process Header
+                    processRow(jsonData[0], 0);
+                    
+                    // Process Data
+                    for (let i = 1; i < jsonData.length; i++) {
+                        processRow(jsonData[i], i);
                     }
                     
-                    // Filter Logic
-                    const filteredRows = [header];
-                    const dataRows = jsonData.slice(1);
-                    
-                    for (let row of dataRows) {
-                        const modVal = row[modColIndex] ? String(row[modColIndex]) : "";
-                        if (modVal.includes(modType)) {
-                            filteredRows.push(row);
-                        }
-                    }
-                    
-                    // Create Filtered Workbook
-                    const ubiWs = XLSX.utils.aoa_to_sheet(filteredRows);
-                    const ubiWb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
-                    
-                    // Statistics per Sample
-                    // Data columns indices: colStart to colEnd-1
-                    const sampleStats = [["Sample", "Identification_Count"]];
-                    const dataColIndices = [];
-                    for (let i = colStart; i < colEnd; i++) dataColIndices.push(i);
-                    
-                    dataColIndices.forEach(colIdx => {
-                        let count = 0;
-                        for (let i = 1; i < filteredRows.length; i++) {
-                            const cell = filteredRows[i][colIdx];
-                            if (cell !== undefined && cell !== null && cell !== "") count++;
-                        }
-                        sampleStats.push([header[colIdx], count]);
-                    });
-                    
-                    const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
-                    const sampleWb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
-                    
-                    // Statistics per Group
-                    if (dataColIndices.length % repCount !== 0) {
-                        throw new Error(`Number of selected columns (${dataColIndices.length}) is not a multiple of replicates (${repCount}).`);
-                    }
-                    
-                    const groupStats = [["Group", "Columns", "Identification_Count"]];
-                    const numGroups = dataColIndices.length / repCount;
-                    
-                    for (let g = 0; g < numGroups; g++) {
-                        const start = g * repCount;
-                        const groupCols = dataColIndices.slice(start, start + repCount);
-                        const groupNames = groupCols.map(idx => header[idx]);
-                        
-                        // Determine Group Name (Common Prefix)
-                        let prefix = groupNames[0]; // Simple logic
-                        // A more robust common prefix logic could be added here
-                        
-                        let groupCount = 0;
-                        for (let i = 1; i < filteredRows.length; i++) {
-                            // Check if ANY column in this group has a value
-                            let hasValue = false;
-                            for (let colIdx of groupCols) {
-                                const cell = filteredRows[i][colIdx];
-                                if (cell !== undefined && cell !== null && cell !== "") {
-                                    hasValue = true;
-                                    break;
-                                }
-                            }
-                            if (hasValue) groupCount++;
-                        }
-                        
-                        groupStats.push([prefix, groupNames.join(", "), groupCount]);
-                    }
-                    
-                    const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
-                    const groupWb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
-                    
-                    // Store results for download
-                    resultWorkbooks = {
-                        ubi: ubiWb,
-                        sample: sampleWb,
-                        group: groupWb,
-                        baseName: file.name.split('.')[0]
-                    };
-                    
-                    showResults();
+                    finishAnalysis(file.name);
                     
                 } catch (err) {
                     showError(err.message);
-                } finally {
                     showLoading(false);
                 }
             };
-            
             reader.readAsArrayBuffer(file);
-        });
-        
-        function downloadFile(type) {
-            if (!resultWorkbooks[type]) return;
-            const suffix = type === 'ubi' ? '_ubi.xlsx' : (type === 'sample' ? '_identification_count_per_sample.xlsx' : '_identification_count_per_group.xlsx');
-            XLSX.writeFile(resultWorkbooks[type], resultWorkbooks.baseName + suffix);
         }
-        
-        document.getElementById('download-ubi').onclick = () => downloadFile('ubi');
-        document.getElementById('download-sample').onclick = () => downloadFile('sample');
-        document.getElementById('download-group').onclick = () => downloadFile('group');
-        
-        document.getElementById('reset-btn').onclick = function() {
-            document.querySelector('.tool-form').style.display = 'block';
-            document.getElementById('results-section').style.display = 'none';
-            document.getElementById('analysis-form').reset();
-            document.getElementById('error-message').style.display = 'none';
-        };
-        
+
+        function processText(file) {
+            let rowCount = 0;
+            
+            Papa.parse(file, {
+                worker: true,
+                step: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        processRow(results.data[0], rowCount);
+                        rowCount++;
+                    }
+                },
+                complete: function() {
+                    if (rowCount === 0) {
+                        showError("File appears to be empty.");
+                        showLoading(false);
+                        return;
+                    }
+                    try {
+                        finishAnalysis(file.name);
+                    } catch (err) {
+                        showError(err.message);
+                        showLoading(false);
+                    }
+                },
+                error: function(err) {
+                    showError("Error parsing file: " + err.message);
+                    showLoading(false);
+                },
+                skipEmptyLines: true,
+                dynamicTyping: true 
+            });
+        }
+
+        function processRow(row, rowIndex) {
+            const ctx = analysisContext;
+            const cfg = ctx.config;
+            
+            // Step 1: Handle Header (Row 0)
+            if (rowIndex === 0) {
+                ctx.header = row;
+                
+                // Validate Header
+                if (!row || row.length === 0) throw new Error("File has 0 columns. Check file format.");
+                if (cfg.modColIndex >= row.length) {
+                    throw new Error(`Modification column index (${cfg.modColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
+                }
+                if (cfg.colEnd > row.length) {
+                    throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
+                }
+                
+                // Initialize Data Column Indices
+                for (let i = cfg.colStart; i < cfg.colEnd; i++) {
+                    ctx.dataColIndices.push(i);
+                }
+                
+                // Validate Group/Replicates match
+                if (ctx.dataColIndices.length % cfg.repCount !== 0) {
+                    throw new Error(`Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}).`);
+                }
+                
+                // Initialize Counts
+                ctx.sampleCounts = new Array(ctx.dataColIndices.length).fill(0);
+                const numGroups = ctx.dataColIndices.length / cfg.repCount;
+                ctx.groupCounts = new Array(numGroups).fill(0);
+                
+                // Define Groups
+                for (let g = 0; g < numGroups; g++) {
+                    const start = g * cfg.repCount;
+                    const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                    const name = row[groupCols[0]] || `Group ${g+1}`; 
+                    ctx.groups.push({
+                        cols: groupCols,
+                        name: name
+                    });
+                }
+                
+                ctx.filteredRows.push(row);
+                return;
+            }
+            
+            // Step 2: Handle Data Rows
+            if (!ctx.header) return; 
+            
+            // Filtering
+            const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
+            if (modVal.includes(cfg.modType)) {
+                ctx.filteredRows.push(row);
+                
+                // Statistics (only for filtered rows)
+                ctx.dataColIndices.forEach((colIdx, i) => {
+                    const cell = row[colIdx];
+                    if (cell !== undefined && cell !== null && cell !== "") {
+                        ctx.sampleCounts[i]++;
+                    }
+                });
+                
+                ctx.groups.forEach((group, gIdx) => {
+                    let hasValue = false;
+                    for (let colIdx of group.cols) {
+                        const cell = row[colIdx];
+                        if (cell !== undefined && cell !== null && cell !== "") {
+                            hasValue = true;
+                            break;
+                        }
+                    }
+                    if (hasValue) {
+                        ctx.groupCounts[gIdx]++;
+                    }
+                });
+            }
+        }
+
+        function finishAnalysis(fileName) {
+            const ctx = analysisContext;
+            const header = ctx.header;
+            
+            // 1. Filtered Data
+            const ubiWs = XLSX.utils.aoa_to_sheet(ctx.filteredRows);
+            const ubiWb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
+            
+            // 2. Sample Stats
+            const sampleStats = [["Sample", "Identification_Count"]];
+            ctx.dataColIndices.forEach((colIdx, i) => {
+                const colName = header[colIdx];
+                sampleStats.push([colName, ctx.sampleCounts[i]]);
+            });
+            const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
+            const sampleWb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
+            
+            // 3. Group Stats
+            const groupStats = [["Group", "Columns", "Identification_Count"]];
+            ctx.groups.forEach((group, i) => {
+                const groupColNames = group.cols.map(idx => header[idx]).join(", ");
+                groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
+            });
+            const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
+            const groupWb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
+            
+            resultWorkbooks = {
+                ubi: ubiWb,
+                sample: sampleWb,
+                group: groupWb,
+                baseName: fileName.split('.')[0]
+            };
+            
+            showLoading(false);
+            showResults();
+        }
+
         function showLoading(show) {
             document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+            if (show) document.getElementById('error-message').style.display = 'none';
         }
         
         function showError(msg) {
-            const el = document.getElementById('error-message');
-            el.textContent = "Error: " + msg;
-            el.style.display = 'block';
+            const errDiv = document.getElementById('error-message');
+            errDiv.textContent = "Error: " + msg;
+            errDiv.style.display = 'block';
+            document.getElementById('loading-overlay').style.display = 'none';
         }
         
         function showResults() {
             document.querySelector('.tool-form').style.display = 'none';
             document.getElementById('results-section').style.display = 'block';
-            document.getElementById('error-message').style.display = 'none';
         }
+        
+        // Download handlers
+        document.getElementById('download-ubi').addEventListener('click', function() {
+            if(resultWorkbooks.ubi) XLSX.writeFile(resultWorkbooks.ubi, resultWorkbooks.baseName + "_filtered.xlsx");
+        });
+        
+        document.getElementById('download-sample').addEventListener('click', function() {
+            if(resultWorkbooks.sample) XLSX.writeFile(resultWorkbooks.sample, resultWorkbooks.baseName + "_sample_stats.xlsx");
+        });
+        
+        document.getElementById('download-group').addEventListener('click', function() {
+            if(resultWorkbooks.group) XLSX.writeFile(resultWorkbooks.group, resultWorkbooks.baseName + "_group_stats.xlsx");
+        });
+        
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            document.querySelector('.tool-form').style.display = 'block';
+            document.getElementById('results-section').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('analysis-form').reset();
+            resultWorkbooks = {};
+            analysisContext = {};
+        });
     </script>
     
     <!-- Footer -->
