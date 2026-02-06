@@ -536,15 +536,38 @@
             setTimeout(() => {
                 try {
                     const data = readyData[type];
-                    const ws = XLSX.utils.aoa_to_sheet(data);
-                    const wb = XLSX.utils.book_new();
-                    const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
-                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
                     
-                    const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
-                    XLSX.writeFile(wb, readyData.baseName + suffix);
+                    // Attempt Excel generation with dense mode (optimizes memory for large files)
+                    try {
+                        const ws = XLSX.utils.aoa_to_sheet(data, { dense: true });
+                        const wb = XLSX.utils.book_new();
+                        const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                        
+                        const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
+                        XLSX.writeFile(wb, readyData.baseName + suffix);
+                    } catch (excelErr) {
+                        console.warn("Excel generation failed, falling back to CSV", excelErr);
+                        // Fallback to CSV for large files if Excel fails
+                        if (type === 'ubi' && (excelErr.message.includes("properties") || excelErr.message.includes("memory"))) {
+                            // Use PapaParse to generate CSV
+                            const csv = Papa.unparse(data);
+                            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                            const link = document.createElement("a");
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute("href", url);
+                            link.setAttribute("download", readyData.baseName + "_filtered.csv");
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            alert("Note: Due to the extremely large dataset, the file was downloaded as CSV to avoid browser memory limits.");
+                        } else {
+                            throw excelErr;
+                        }
+                    }
                 } catch (err) {
-                    alert("Error generating file: " + err.message);
+                    alert("Error generating file: " + err.message + "\n\nTry filtering for a smaller subset if possible.");
                 } finally {
                     btn.textContent = originalText;
                     btn.disabled = false;
