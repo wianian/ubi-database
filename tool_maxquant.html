@@ -182,7 +182,7 @@
     </style>
 
     <script>
-        let resultWorkbooks = {};
+        let readyData = {};
         
         // Analysis State Context
         let analysisContext = {
@@ -455,53 +455,38 @@
             const ctx = analysisContext;
             const header = ctx.header;
             
-            // Step 1: Filtered Data
-            updateProgress(92, "Generating Filtered Report...");
+            // Step 1: Calculate Statistics (Data is already filtered)
+            updateProgress(95, "Calculating Statistics...");
+            
             setTimeout(() => {
-                const ubiWs = XLSX.utils.aoa_to_sheet(ctx.filteredRows);
-                const ubiWb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(ubiWb, ubiWs, "Filtered");
+                // Prepare Sample Stats Data (Array of Arrays)
+                const sampleStats = [["Sample", "Identification_Count"]];
+                ctx.dataColIndices.forEach((colIdx, i) => {
+                    const colName = header[colIdx];
+                    sampleStats.push([colName, ctx.sampleCounts[i]]);
+                });
                 
-                // Step 2: Sample Stats
-                updateProgress(95, "Generating Sample Statistics...");
+                // Prepare Group Stats Data (Array of Arrays)
+                const groupStats = [["Group", "Columns", "Identification_Count"]];
+                ctx.groups.forEach((group, i) => {
+                    const groupColNames = group.cols.map(idx => header[idx]).join(", ");
+                    groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
+                });
+                
+                // Store raw data for lazy generation
+                readyData = {
+                    ubi: ctx.filteredRows,
+                    sample: sampleStats,
+                    group: groupStats,
+                    baseName: fileName.split('.')[0]
+                };
+                
+                updateProgress(100, "Analysis Complete!");
                 setTimeout(() => {
-                    const sampleStats = [["Sample", "Identification_Count"]];
-                    ctx.dataColIndices.forEach((colIdx, i) => {
-                        const colName = header[colIdx];
-                        sampleStats.push([colName, ctx.sampleCounts[i]]);
-                    });
-                    const sampleWs = XLSX.utils.aoa_to_sheet(sampleStats);
-                    const sampleWb = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(sampleWb, sampleWs, "Sample Stats");
-                    
-                    // Step 3: Group Stats
-                    updateProgress(98, "Generating Group Statistics...");
-                    setTimeout(() => {
-                        const groupStats = [["Group", "Columns", "Identification_Count"]];
-                        ctx.groups.forEach((group, i) => {
-                            const groupColNames = group.cols.map(idx => header[idx]).join(", ");
-                            groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
-                        });
-                        const groupWs = XLSX.utils.aoa_to_sheet(groupStats);
-                        const groupWb = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(groupWb, groupWs, "Group Stats");
-                        
-                        resultWorkbooks = {
-                            ubi: ubiWb,
-                            sample: sampleWb,
-                            group: groupWb,
-                            baseName: fileName.split('.')[0]
-                        };
-                        
-                        updateProgress(100, "Analysis Complete!");
-                        setTimeout(() => {
-                            showLoading(false);
-                            showResults();
-                        }, 500);
-                        
-                    }, 50); // Delay for Group Stats
-                }, 50); // Delay for Sample Stats
-            }, 50); // Delay for Filtered Data
+                    showLoading(false);
+                    showResults();
+                }, 500);
+            }, 50);
         }
 
         function showLoading(show) {
@@ -539,25 +524,44 @@
             document.getElementById('results-section').style.display = 'block';
         }
         
-        // Download handlers
-        document.getElementById('download-ubi').addEventListener('click', function() {
-            if(resultWorkbooks.ubi) XLSX.writeFile(resultWorkbooks.ubi, resultWorkbooks.baseName + "_filtered.xlsx");
-        });
+        function downloadFile(type) {
+            if (!readyData[type]) return;
+            
+            const btn = document.getElementById(`download-${type}`);
+            const originalText = btn.textContent;
+            btn.textContent = "Generating...";
+            btn.disabled = true;
+            
+            // Allow UI to update
+            setTimeout(() => {
+                try {
+                    const data = readyData[type];
+                    const ws = XLSX.utils.aoa_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    
+                    const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
+                    XLSX.writeFile(wb, readyData.baseName + suffix);
+                } catch (err) {
+                    alert("Error generating file: " + err.message);
+                } finally {
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                }
+            }, 50);
+        }
         
-        document.getElementById('download-sample').addEventListener('click', function() {
-            if(resultWorkbooks.sample) XLSX.writeFile(resultWorkbooks.sample, resultWorkbooks.baseName + "_sample_stats.xlsx");
-        });
-        
-        document.getElementById('download-group').addEventListener('click', function() {
-            if(resultWorkbooks.group) XLSX.writeFile(resultWorkbooks.group, resultWorkbooks.baseName + "_group_stats.xlsx");
-        });
+        document.getElementById('download-ubi').addEventListener('click', () => downloadFile('ubi'));
+        document.getElementById('download-sample').addEventListener('click', () => downloadFile('sample'));
+        document.getElementById('download-group').addEventListener('click', () => downloadFile('group'));
         
         document.getElementById('reset-btn').addEventListener('click', function() {
             document.querySelector('.tool-form').style.display = 'block';
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('error-message').style.display = 'none';
             document.getElementById('analysis-form').reset();
-            resultWorkbooks = {};
+            readyData = {};
             analysisContext = {};
         });
     </script>
