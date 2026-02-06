@@ -145,7 +145,11 @@
                         
                         <div class="loading-overlay" id="loading-overlay" style="display: none;">
                             <div class="spinner"></div>
-                            <p>Processing data... This may take a moment.</p>
+                            <p id="loading-text">Processing data... This may take a moment.</p>
+                            <div class="progress-container" id="progress-container" style="display: none; width: 80%; max-width: 400px; margin-top: 15px;">
+                                <div class="progress-bar" id="progress-bar" style="width: 0%; height: 10px; background-color: #003366; border-radius: 5px; transition: width 0.2s;"></div>
+                            </div>
+                            <p id="progress-percent" style="display: none; margin-top: 5px; font-size: 0.9rem; color: #555;">0%</p>
                         </div>
                     </div>
                 </div>
@@ -171,8 +175,9 @@
         .download-btn { background-color: #28a745; color: white; padding: 8px 15px; border-radius: 4px; border: none; font-weight: 500; cursor: pointer; transition: background 0.3s; }
         .download-btn:hover { background-color: #218838; }
         .reset-btn { background: none; border: 1px solid #ccc; padding: 8px 15px; border-radius: 4px; cursor: pointer; color: #666; margin-top: 10px; }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
         .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #003366; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        .progress-container { background-color: #e0e0e0; border-radius: 5px; overflow: hidden; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
@@ -187,7 +192,8 @@
             groupCounts: [],
             config: {},
             dataColIndices: [],
-            groups: []
+            groups: [],
+            startTime: 0
         };
 
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
@@ -218,7 +224,8 @@
                     modType, modColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
-                groups: []
+                groups: [],
+                startTime: Date.now()
             };
             
             showLoading(true);
@@ -226,7 +233,9 @@
             const fileName = file.name.toLowerCase();
             // Use SheetJS for Excel files, PapaParse for Text/CSV/TSV
             if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-                processExcel(file);
+                updateProgress(0, "Reading Excel file... (This might take a while for large files)");
+                // Give UI a moment to update before freezing with sync XLSX read
+                setTimeout(() => processExcel(file), 100);
             } else {
                 processText(file);
             }
@@ -236,6 +245,7 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
+                    updateProgress(50, "Parsing Excel data...");
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -243,10 +253,14 @@
                     
                     if (jsonData.length < 1) throw new Error("File is empty");
                     
+                    updateProgress(80, "Processing rows...");
+                    
                     // Process Header
                     processRow(jsonData[0], 0);
                     
                     // Process Data
+                    // Use setTimeout to avoid UI freeze if possible, but for array loop it's still sync.
+                    // For Excel we accept it's slower/sync.
                     for (let i = 1; i < jsonData.length; i++) {
                         processRow(jsonData[i], i);
                     }
@@ -263,13 +277,45 @@
 
         function processText(file) {
             let rowCount = 0;
+            const fileSize = file.size;
+            
+            updateProgress(0, "Initializing stream...");
             
             Papa.parse(file, {
                 worker: true,
-                step: function(results) {
+                chunkSize: 1024 * 1024 * 5, // 5MB chunks
+                chunk: function(results, parser) {
+                    // Update Progress
+                    if (results.meta && results.meta.cursor) {
+                        const percent = Math.min(99, Math.round((results.meta.cursor / fileSize) * 100));
+                        const elapsed = (Date.now() - analysisContext.startTime) / 1000;
+                        const rate = results.meta.cursor / elapsed; // bytes per second
+                        const remainingBytes = fileSize - results.meta.cursor;
+                        const eta = remainingBytes / rate;
+                        
+                        let etaText = "";
+                        if (isFinite(eta) && eta > 0) {
+                            etaText = ` - ETA: ${formatTime(eta)}`;
+                        }
+                        
+                        updateProgress(percent, `Processing... ${percent}%${etaText}`);
+                    }
+                    
+                    // Process chunk data
                     if (results.data && results.data.length > 0) {
-                        processRow(results.data[0], rowCount);
-                        rowCount++;
+                        const rows = results.data;
+                        // Handle header if it's the first chunk
+                        let startIndex = 0;
+                        if (rowCount === 0) {
+                            processRow(rows[0], 0);
+                            startIndex = 1;
+                            rowCount++;
+                        }
+                        
+                        for (let i = startIndex; i < rows.length; i++) {
+                            processRow(rows[i], rowCount);
+                            rowCount++;
+                        }
                     }
                 },
                 complete: function() {
@@ -279,7 +325,8 @@
                         return;
                     }
                     try {
-                        finishAnalysis(file.name);
+                        updateProgress(100, "Finalizing results...");
+                        setTimeout(() => finishAnalysis(file.name), 100);
                     } catch (err) {
                         showError(err.message);
                         showLoading(false);
@@ -415,7 +462,25 @@
 
         function showLoading(show) {
             document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
-            if (show) document.getElementById('error-message').style.display = 'none';
+            if (show) {
+                document.getElementById('error-message').style.display = 'none';
+                document.getElementById('progress-container').style.display = 'block';
+                document.getElementById('progress-percent').style.display = 'block';
+                updateProgress(0, "Starting analysis...");
+            }
+        }
+        
+        function updateProgress(percent, text) {
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('progress-percent').textContent = percent + '%';
+            if (text) document.getElementById('loading-text').textContent = text;
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 60) return Math.round(seconds) + "s";
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.round(seconds % 60);
+            return `${minutes}m ${remainingSeconds}s`;
         }
         
         function showError(msg) {
