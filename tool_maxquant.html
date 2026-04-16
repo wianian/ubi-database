@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MaxQuant Tool (Standalone) - Ubi Database</title>
+    <title>Statistical identification quantity - Ubi Database</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <!-- SheetJS for Excel processing -->
@@ -36,7 +36,7 @@
                             <li class="nested-dropdown">
                                 <a href="#">Search software <i class="fas fa-chevron-right"></i></a>
                                 <ul class="dropdown-submenu">
-                                    <li><a href="tool_maxquant.html">MaxQuant</a></li>
+                                    <li><a href="tool_maxquant.html">Statistical identification quantity</a></li>
                                 </ul>
                             </li>
                         </ul>
@@ -65,14 +65,23 @@
     <div class="main-container">
         <div class="content-section" style="display: block;">
             <div class="data-window">
-                <div class="window-header">MaxQuant Analysis Tool</div>
+                <div class="window-header">Statistical identification quantity</div>
                 <div class="window-content" style="padding: 40px;">
                     <div class="tool-container">
                         <div class="tool-form">
                             <h3><i class="fas fa-file-upload"></i> Upload & Configure</h3>
                             <form id="analysis-form">
                                 <div class="form-group">
-                                    <label for="file-upload">Upload MaxQuant Result File (.xlsx, .tsv, .txt, .csv)</label>
+                                    <label for="tool-mode">Tool Mode</label>
+                                    <select id="tool-mode" name="tool_mode" required>
+                                        <option value="spectronaut" selected>Spectronaut</option>
+                                        <option value="maxquant">MaxQuant</option>
+                                    </select>
+                                    <small>Select the software tool that generated your input data. Both modes use the same analysis pipeline.</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="file-upload">Upload Result File (.xlsx, .tsv, .txt, .csv)</label>
                                     <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt, .csv" required>
                                 </div>
                                 
@@ -80,8 +89,9 @@
                                     <label for="modification-type">Modification Type</label>
                                     <select id="modification-type" name="modification_type" required>
                                         <option value="[GlyGly (K)]">Ubiquitination [GlyGly (K)]</option>
+                                        <option value="Proteome">Proteome</option>
                                     </select>
-                                    <small>Filters rows containing exactly: [GlyGly (K)]</small>
+                                    <small>Filters rows containing exactly: [GlyGly (K)] or select Proteome for whole proteome analysis</small>
                                 </div>
                                 
                                 <div class="form-group">
@@ -129,9 +139,9 @@
                                     <div class="card-left">
                                         <div class="card-header">
                                             <i class="fas fa-file-excel"></i>
-                                            <h4>Filtered Data (Ubiquitinated)</h4>
+                                            <h4 id="filtered-data-title">Filtered Data (Ubiquitinated)</h4>
                                         </div>
-                                        <p>Rows containing [GlyGly (K)] in the specified column</p>
+                                        <p id="filtered-data-desc">Rows containing [GlyGly (K)] in the specified column</p>
                                     </div>
                                     <div class="card-right">
                                         <button class="download-btn" id="download-ubi"><i class="fas fa-download"></i> Download Filtered Data</button>
@@ -358,7 +368,8 @@
             e.preventDefault();
             
             const fileInput = document.getElementById('file-upload');
-            const modType = "[GlyGly (K)]";
+            const modTypeSelect = document.getElementById('modification-type');
+            const modType = modTypeSelect.value;
             const modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
@@ -685,7 +696,9 @@
             // Unique Value for Counting (e.g. Protein ID)
             const uniqueVal = row[cfg.uniqueIdColIndex] ? String(row[cfg.uniqueIdColIndex]) : "";
             
-            if (modVal.includes(cfg.modType)) {
+            // If Proteome mode, include all rows; otherwise filter by modification type
+            const isProteomeMode = (cfg.modType === 'Proteome');
+            if (isProteomeMode || modVal.includes(cfg.modType)) {
                 ctx.filteredRows.push(row);
                 
                 // Counting Logic (Unique Identification Count):
@@ -808,6 +821,20 @@
         function showResults() {
             document.querySelector('.tool-form').style.display = 'none';
             document.getElementById('results-section').style.display = 'block';
+
+            // Update filtered data title and description based on mode
+            const modType = analysisContext.config.modType;
+            const toolMode = document.getElementById('tool-mode').value;
+            const titleEl = document.getElementById('filtered-data-title');
+            const descEl = document.getElementById('filtered-data-desc');
+
+            if (modType === 'Proteome') {
+                titleEl.textContent = 'Filtered Data (Proteome)';
+                descEl.textContent = `All rows from ${toolMode === 'spectronaut' ? 'Spectronaut' : 'MaxQuant'} result file (whole proteome)`;
+            } else {
+                titleEl.textContent = 'Filtered Data (Ubiquitinated)';
+                descEl.textContent = `Rows containing [GlyGly (K)] in the specified column (${toolMode === 'spectronaut' ? 'Spectronaut' : 'MaxQuant'} data)`;
+            }
             
             // Show Warning if exists
             const warningContainer = document.getElementById('warning-container');
