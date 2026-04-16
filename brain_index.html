@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubi Database</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .alert-banner {
+            background-color: #ffdd57;
+            color: #856404;
+            padding: 12px 0;
+            text-align: center;
+            font-weight: 500;
+            border-bottom: 1px solid #ffcc00;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .alert-banner a {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        
+        .header {
+            background: linear-gradient(to bottom, #003366, #002244);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .header-left h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+        
+        .header-left h2 {
+            font-size: 1.1rem;
+            font-weight: 400;
+            opacity: 0.9;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .login-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .login-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        
+        .main-container {
+            flex: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #003366;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+        
+        .search-box {
+            display: flex;
+            max-width: 700px;
+            margin: 0 auto 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 15px 20px;
+            border: none;
+            font-size: 1.1rem;
+            outline: none;
+        }
+        
+        .search-btn {
+            background: #0056b3;
+            color: white;
+            border: none;
+            padding: 0 25px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.3s;
+        }
+        
+        .search-btn:hover {
+            background: #004494;
+        }
+        
+        .description {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            color: #555;
+            font-size: 1.05rem;
+        }
+        
+        .content-section {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 25px;
+        }
+        
+        .data-windows {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+        
+        .data-window {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .window-header {
+            background: #003366;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .window-content {
+            padding: 20px;
+        }
+        
+        .organs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .organs-table th {
+            background-color: #e9ecef;
+            text-align: left;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+        
+        .organs-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .organs-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .organs-table tr:hover {
+            background-color: #e9f7ff;
+        }
+        
+        .organ-link {
+            color: #0056b3;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        
+        .organ-link:hover {
+            color: #003366;
+            text-decoration: underline;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .sidebar-box {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .sidebar-title {
+            background: #0056b3;
+            color: white;
+            padding: 12px 15px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .sidebar-links {
+            padding: 15px;
+        }
+        
+        .sidebar-links a {
+            display: block;
+            padding: 10px 0;
+            color: #0056b3;
+            text-decoration: none;
+            border-bottom: 1px solid #eee;
+            transition: all 0.2s;
+        }
+        
+        .sidebar-links a:hover {
+            color: #003366;
+            padding-left: 5px;
+        }
+        
+        .sidebar-links a:last-child {
+            border-bottom: none;
+        }
+        
+        .footer {
+            background: #003366;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .footer-links a {
+            color: #a3c6ff;
+            text-decoration: none;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .copyright {
+            opacity: 0.8;
+            font-size: 0.9rem;
+        }
+        
+        /* Detail Page Styles */
+        .organ-detail-container {
+            max-width: 1000px;
+            margin: 20px auto;
+        }
+        
+        .organ-detail-window {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .organ-header {
+            background: linear-gradient(to right, #003366, #0056b3);
+            color: white;
+            padding: 25px 30px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .organ-icon {
+            font-size: 3.5rem;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+        }
+        
+        .organ-title h2 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        
+        .organ-title p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .organ-content {
+            padding: 30px;
+        }
+        
+        .organ-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #0056b3;
+        }
+        
+        .info-card h3 {
+            color: #0056b3;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .info-card p {
+            line-height: 1.8;
+            color: #444;
+        }
+        
+        .organ-stats {
+            margin-top: 20px;
+        }
+        
+        .organ-stats h3 {
+            color: #0056b3;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #eaeaea;
+            padding-bottom: 10px;
+        }
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .stats-table th, .stats-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .stats-table th {
+            background-color: #e9ecef;
+            font-weight: 600;
+            width: 30%;
+        }
+        
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+            color: #0056b3;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 15px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .back-link:hover {
+            background: #e9f7ff;
+            text-decoration: underline;
+        }
+        
+        .detail-description {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #444;
+            margin-bottom: 25px;
+        }
+        
+        .detail-section-title {
+            font-size: 1.5rem;
+            color: #003366;
+            margin: 30px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eaeaea;
+        }
+        
+        /* 新增数据表格样式 */
+        .data-table-container {
+            margin: 20px 0;
+            border: 1px solid #eaeaea;
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 500px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .data-table th {
+            background-color: #003366;
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eaeaea;
+        }
+        
+        .data-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .data-table tr:hover {
+            background-color: #e9f7ff;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 15px;
+            gap: 10px;
+        }
+        
+        .pagination button {
+            padding: 8px 15px;
+            background: #0056b3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .pagination button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .pagination button:hover:not(:disabled) {
+            background: #003366;
+        }
+        
+        .page-info {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+        
+        .loading i {
+            margin-right: 10px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            text-align: center;
+            padding: 20px;
+            color: #d32f2f;
+            font-weight: 500;
+        }
+        
+        @media (max-width: 900px) {
+            .content-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-windows {
+                grid-template-columns: 1fr;
+            }
+            
+            .organ-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .organ-info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-table-container {
+                max-height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1>PHD Research Group of Phoenix Center</h1>
+            <h2>Chinese National Protein Science Center</h2>
+            <h3>Made in China</h3>
+        </div>
+        <div class="header-right">
+            <button class="login-btn">Log in</button>
+        </div>
+    </header>
+    
+    <!-- Main Content Container -->
+    <div class="main-container" id="main-content">
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="logo">Ubi Database<sup>®</sup></div>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search for organs...">
+                <button class="search-btn">Search</button>
+            </div>
+            <p class="description">
+                The PHD<sup>®</sup> research group mainly studies the ubiquitination modification, 
+                focusing on ubiquitination technology, ubiquitination databases, and atypical ubiquitination 
+                research.
+            </p>
+        </section>
+        
+        <!-- Content Section -->
+        <div class="content-section">
+            <!-- Data Windows -->
+            <div class="data-windows">
+                <!-- Organ Database 1 -->
+                <div class="data-window">
+                    <div class="window-header">Human Organ Database</div>
+                    <div class="window-content">
+                        <table class="organs-table">
+                            <thead>
+                                <tr>
+                                    <th>Organ ID</th>
+                                    <th>Organ Name</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ORG001</td>
+                                    <td><span class="organ-link" data-organ="brain">Brain</span></td>
+                                    <td>Nervous System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG002</td>
+                                    <td><span class="organ-link" data-organ="heart">Heart</span></td>
+                                    <td>Cardiovascular</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG003</td>
+                                    <td><span class="organ-link" data-organ="intestines">Intestines</span></td>
+                                    <td>Digestive System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG004</td>
+                                    <td><span class="organ-link" data-organ="kidney">Kidney</span></td>
+                                    <td>Urinary System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG005</td>
+                                    <td><span class="organ-link" data-organ="liver">Liver</span></td>
+                                    <td>Digestive System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG006</td>
+                                    <td><span class="organ-link" data-organ="lung">Lung</span></td>
+                                    <td>Respiratory System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG007</td>
+                                    <td><span class="organ-link" data-organ="lymph">Lymph</span></td>
+                                    <td>Immune System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG008</td>
+                                    <td><span class="organ-link" data-organ="skin">Skin</span></td>
+                                    <td>Integumentary System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG009</td>
+                                    <td><span class="organ-link" data-organ="spleen">Spleen</span></td>
+                                    <td>Lymphatic System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG010</td>
+                                    <td><span class="organ-link" data-organ="testicle">Testicle</span></td>
+                                    <td>Reproductive System</td>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Organ Database 2
+                <div class="data-window">
+                    <div class="window-header">Additional Organ Data</div>
+                    <div class="window-content">
+                        <table class="organs-table">
+                            <thead>
+                                <tr>
+                                    <th>Organ ID</th>
+                                    <th>Organ Name</th>
+                                    <th>Category</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>ORG006</td>
+                                    <td><span class="organ-link" data-organ="lung">Lung</span></td>
+                                    <td>Respiratory System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG007</td>
+                                    <td><span class="organ-link" data-organ="lymph">Lymph</span></td>
+                                    <td>Immune System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG008</td>
+                                    <td><span class="organ-link" data-organ="skin">Skin</span></td>
+                                    <td>Integumentary System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG009</td>
+                                    <td><span class="organ-link" data-organ="spleen">Spleen</span></td>
+                                    <td>Lymphatic System</td>
+                                </tr>
+                                <tr>
+                                    <td>ORG010</td>
+                                    <td><span class="organ-link" data-organ="testicle">Testicle</span></td>
+                                    <td>Reproductive System</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div> -->
+            </div>
+            
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Learn Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Learn</div>
+                    <div class="sidebar-links">
+                        <a href="#">About Database</a>
+                        <a href="#">FAQ & User Guide</a>
+                        <a href="#">Data Sources</a>
+                    </div>
+                </div>
+                
+                <!-- Find Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Find</div>
+                    <div class="sidebar-links">
+                        <a href="#">Advanced Search</a>
+                        <a href="#">Organ Categories</a>
+                        <a href="#">System Explorer</a>
+                    </div>
+                </div>
+                
+                <!-- Download Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Download</div>
+                    <div class="sidebar-links">
+                        <a href="#">Dataset API</a>
+                        <a href="#">Full Database Export</a>
+                        <a href="#">Research Data</a>
+                    </div>
+                </div>
+                
+                <!-- Explore Section -->
+                <div class="sidebar-box">
+                    <div class="sidebar-title">Explore</div>
+                    <div class="sidebar-links">
+                        <a href="#">Organ Systems</a>
+                        <a href="#">Pathology Database</a>
+                        <a href="#">Physiology Resources</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Organ Detail Page (hidden by default) -->
+    <div id="organ-detail" style="display: none;">
+        <div class="main-container">
+            <div class="organ-detail-container">
+                <a href="#" class="back-link" id="back-link">
+                    <i class="fas fa-arrow-left"></i> Back to Organ Database
+                </a>
+                
+                <div class="organ-detail-window">
+                    <div class="organ-header">
+                        <div class="organ-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="organ-title">
+                            <h2 id="detail-title">Brain</h2>
+                            <p id="detail-subtitle">Central Organ of the Nervous System</p>
+                        </div>
+                    </div>
+                    
+                    <div class="organ-content">
+                        <div class="detail-description" id="detail-description">
+                            The brain is the central organ of the human nervous system, responsible for processing sensory information, regulating bodily functions, and enabling cognition and consciousness. It consists of the cerebrum, brainstem, and cerebellum.
+                        </div>
+                        
+                        <!-- 数据表格容器 -->
+                        <div id="brain-data-container">
+                            <h3 class="detail-section-title">Brain Research Data</h3>
+                            <div class="data-table-container">
+                                <div class="loading" id="loading-indicator">
+                                    <i class="fas fa-spinner"></i> Loading brain data...
+                                </div>
+                                <!-- 在organ-detail部分找到表格定义 -->
+                                <table class="data-table" id="brain-data-table" style="display: none;">
+                                    <thead>
+                                        <tr>
+                                            <th>Precursor ID</th>
+                                            <th>Brain NC1</th>
+                                            <th>Brain NC2</th>
+                                            <th>Brain NC3</th>
+                                            <th>Brain 9d1</th>
+                                            <th>Brain 9d2</th>
+                                            <th>Brain 9d3</th>
+                                            <th>Brain 28d1</th>
+                                            <th>Brain 28d2</th>
+                                            <th>Brain 28d3</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="brain-data-body"></tbody>
+                                </table>
+                                <div class="error-message" id="error-message" style="display: none;"></div>
+                            </div>
+                            <div class="pagination" id="pagination-controls" style="display: none;">
+                                <button id="prev-page" disabled>Previous</button>
+                                <div class="page-info" id="page-info">Page 1 of 1</div>
+                                <button id="next-page" disabled>Next</button>
+                            </div>
+                        </div>
+                        
+                        <h3 class="detail-section-title">Organ Information</h3>
+                        
+                        <div class="organ-info-grid">
+                            <div class="info-card">
+                                <h3>Primary Function</h3>
+                                <p id="function-text">Processes sensory information, controls thought, memory, emotion, touch, motor skills, vision, breathing, temperature, hunger and every process that regulates our body.</p>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h3>Anatomical Location</h3>
+                                <p id="location-text">Contained within the skull, occupying the cranial cavity. Divided into three main parts: forebrain, midbrain, and hindbrain.</p>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h3>Clinical Significance</h3>
+                                <p id="significance-text">Subject to various disorders including neurodegenerative diseases (Alzheimer's, Parkinson's), stroke, tumors, infections, and trauma. Requires constant blood supply.</p>
+                            </div>
+                            <div class="info-card">
+                                <h3>Ubi</h3>
+                                <p id="significance-text">Subject to various disorders including neurodegenerative diseases (Alzheimer's, Parkinson's), stroke, tumors, infections, and trauma. Requires constant blood supply.</p>
+                            </div>
+                        </div>
+                        
+                        <h3 class="detail-section-title">Physiological Statistics</h3>
+                        
+                        <div class="organ-stats">
+                            <table class="stats-table">
+                                <tbody>
+                                    <tr>
+                                        <th>Average Weight</th>
+                                        <td id="weight">1.3-1.4 kg (adult)</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Neurons</th>
+                                        <td id="neurons">Approximately 86 billion</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Oxygen Consumption</th>
+                                        <td id="oxygen">20% of total body oxygen</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Blood Flow</th>
+                                        <td id="blood">15-20% of cardiac output</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Development</th>
+                                        <td id="development">Reaches full size by age 25</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <h3 class="detail-section-title">Key Structures</h3>
+                        
+                        <div class="organ-stats">
+                            <table class="stats-table">
+                                <tbody>
+                                    <tr>
+                                        <th>Cerebrum</th>
+                                        <td>Largest part, responsible for higher brain functions</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cerebellum</th>
+                                        <td>Coordinates voluntary movements and balance</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Brainstem</th>
+                                        <td>Controls automatic functions (breathing, heart rate)</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Diencephalon</th>
+                                        <td>Contains thalamus and hypothalamus</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Cerebral Cortex</th>
+                                        <td>Outer layer of neural tissue, enables cognition</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="#">An initial version of the China</a>
+            <a href="#">https://www.worldbank/</a>
+        </div>
+        <div class="copyright">
+            &copy; 2025 National Center for Biotechnology Information, Chinese National Library of Medicine
+        </div>
+    </footer>
+    
+    <script>
+        // 常量定义
+        const PAGE_SIZE = 20;
+        const API_ENDPOINT = 'http://localhost:5000/api/brain';
+
+        // 状态管理
+        let currentPage = 1;
+        let totalPages = 1;
+        let isBrainDataLoading = false;
+
+        // DOM元素引用
+        const mainContent = document.getElementById('main-content');
+        const organDetail = document.getElementById('organ-detail');
+        const backLink = document.getElementById('back-link');
+        const organLinks = document.querySelectorAll('.organ-link');
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.querySelector('.search-btn');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        const pageInfo = document.getElementById('page-info');
+        const brainDataBody = document.getElementById('brain-data-body');
+        const brainDataTable = document.getElementById('brain-data-table');
+        const paginationControls = document.getElementById('pagination-controls');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const errorMessage = document.getElementById('error-message');
+
+        // 器官数据
+        const organData = {
+            brain: {
+                title: "Brain",
+                subtitle: "Central Organ of the Nervous System",
+                description: "The brain is the central organ of the human nervous system, responsible for processing sensory information, regulating bodily functions, and enabling cognition and consciousness. It consists of the cerebrum, brainstem, and cerebellum.",
+                function: "Processes sensory information, controls thought, memory, emotion, touch, motor skills, vision, breathing, temperature, hunger and every process that regulates our body.",
+                location: "Contained within the skull, occupying the cranial cavity. Divided into three main parts: forebrain, midbrain, and hindbrain.",
+                significance: "Subject to various disorders including neurodegenerative diseases (Alzheimer's, Parkinson's), stroke, tumors, infections, and trauma. Requires constant blood supply.",
+                weight: "1.3-1.4 kg (adult)",
+                neurons: "Approximately 86 billion",
+                oxygen: "20% of total body oxygen",
+                blood: "15-20% of cardiac output",
+                development: "Reaches full size by age 25",
+                icon: "fa-brain"
+            },
+            heart: {
+                title: "Heart",
+                subtitle: "Central Pump of the Circulatory System",
+                description: "The heart is a muscular organ that pumps blood through the blood vessels of the circulatory system. It provides the body with oxygen and nutrients while removing carbon dioxide and other wastes.",
+                function: "Pumps blood throughout the body via the circulatory system, supplying oxygen and nutrients to tissues and removing carbon dioxide and other wastes.",
+                location: "Located in the mediastinum of the thoracic cavity, between the lungs and slightly left of center.",
+                significance: "Subject to conditions such as coronary artery disease, heart failure, arrhythmias, and valvular heart disease. Cardiovascular disease is the leading cause of death globally.",
+                weight: "250-350 grams (adult)",
+                beats: "60-100 beats per minute (resting)",
+                output: "5-6 liters per minute (resting)",
+                chambers: "4 (two atria and two ventricles)",
+                development: "Begins beating at 3 weeks gestation",
+                icon: "fa-heart"
+            },
+            liver: {
+                title: "Liver",
+                subtitle: "Primary Metabolic Organ",
+                description: "The liver is the largest internal organ and gland in the human body. It performs over 500 vital functions including detoxification, protein synthesis, and production of biochemicals necessary for digestion.",
+                function: "Processes nutrients from food, produces bile to help digest fats, filters toxins from the blood, regulates blood clotting, and stores vitamins and minerals.",
+                location: "Located in the upper right quadrant of the abdomen, below the diaphragm.",
+                significance: "Subject to diseases such as hepatitis, cirrhosis, fatty liver disease, and cancer. Liver failure can be life-threatening.",
+                weight: "1.4-1.6 kg (adult)",
+                lobes: "4 (right, left, caudate, and quadrate)",
+                regeneration: "Can regenerate from as little as 25% of original mass",
+                bloodSupply: "Dual blood supply from hepatic artery and portal vein",
+                functions: "Over 500 known functions",
+                icon: "fa-leaf"
+            }
+        };
+
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 器官链接点击事件
+            organLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const organ = this.getAttribute('data-organ');
+                    showOrganDetail(organ);
+                });
+            });
+
+            // 返回链接点击事件
+            backLink.addEventListener('click', function(e) {
+                e.preventDefault();
+                organDetail.style.display = 'none';
+                mainContent.style.display = 'block';
+            });
+
+            // 搜索按钮点击事件
+            searchBtn.addEventListener('click', function() {
+                const searchTerm = searchInput.value.toLowerCase().trim();
+                if (searchTerm) {
+                    const organs = ['brain', 'heart', 'intestines', 'kidney', 'liver', 'lung', 'lymph', 'skin', 'spleen', 'testicle'];
+                    const matchedOrgan = organs.find(organ => organ.includes(searchTerm));
+                    
+                    if (matchedOrgan) {
+                        showOrganDetail(matchedOrgan);
+                    } else {
+                        alert(`No organ found matching "${searchTerm}". Try "brain", "heart", or "liver".`);
+                    }
+                }
+            });
+
+            // 搜索框回车事件
+            searchInput.addEventListener('keyup', function(e) {
+                if (e.key === 'Enter') {
+                    searchBtn.click();
+                }
+            });
+
+            // 分页按钮事件
+            prevPageBtn.addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadBrainData(currentPage);
+                }
+            });
+
+            nextPageBtn.addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadBrainData(currentPage);
+                }
+            });
+        }
+
+        // 显示器官详情
+        function showOrganDetail(organ) {
+            const data = organData[organ] || organData.brain;
+            
+            // 更新详情页内容
+            document.getElementById('detail-title').textContent = data.title;
+            document.getElementById('detail-subtitle').textContent = data.subtitle;
+            document.getElementById('detail-description').textContent = data.description;
+            document.getElementById('function-text').textContent = data.function;
+            document.getElementById('location-text').textContent = data.location;
+            document.getElementById('significance-text').textContent = data.significance;
+            
+            // 更新图标
+            const iconElement = document.querySelector('.organ-icon i');
+            iconElement.className = `fas ${data.icon}`;
+            
+            // 如果是brain器官，加载数据表格
+            if (organ === 'brain') {
+                // 重置分页状态
+                currentPage = 1;
+                totalPages = 1;
+                
+                // 显示加载指示器
+                loadingIndicator.style.display = 'block';
+                brainDataTable.style.display = 'none';
+                paginationControls.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                // 加载数据
+                loadBrainData(currentPage);
+            }
+            
+            // 显示详情页，隐藏主内容
+            mainContent.style.display = 'none';
+            organDetail.style.display = 'block';
+            
+            // 滚动到顶部
+            window.scrollTo(0, 0);
+        }
+
+        // 加载brain数据
+        function loadBrainData(page) {
+            // 防止重复请求
+            if (isBrainDataLoading) return;
+            
+            // 设置加载状态
+            isBrainDataLoading = true;
+            loadingIndicator.style.display = 'block';
+            brainDataTable.style.display = 'none';
+            paginationControls.style.display = 'none';
+            errorMessage.style.display = 'none';
+            
+            // 清空现有数据
+            brainDataBody.innerHTML = '';
+            
+            // 发起API请求
+            fetch(`${API_ENDPOINT}?page=${page}&per_page=${PAGE_SIZE}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Server responded with status ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 处理数据
+                    if (data.data && data.data.length > 0) {
+                        // 渲染表格数据
+                        renderBrainData(data.data);
+                        
+                        // 更新分页信息
+                        totalPages = Math.ceil(data.total / PAGE_SIZE);
+                        updatePaginationControls(page, totalPages);
+                        
+                        // 显示表格和分页控件
+                        brainDataTable.style.display = 'table';
+                        paginationControls.style.display = 'flex';
+                    } else {
+                        // 没有数据的情况
+                        brainDataBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No brain data available</td></tr>';
+                        brainDataTable.style.display = 'table';
+                        paginationControls.style.display = 'flex';
+                    }
+                })
+
+                .catch(error => {
+                    console.error('Error fetching brain data:', error);
+                    // 显示更具体的错误信息
+                    errorMessage.textContent = `Database connection failed. Please check: 
+                        - Database service is running
+                        - Correct port (715) is used
+                        - Database 'ubi_database' exists`;
+                    errorMessage.style.display = 'block';
+                })
+                .finally(() => {
+                    // 重置加载状态
+                    isBrainDataLoading = false;
+                    loadingIndicator.style.display = 'none';
+                });
+        }
+
+        // 渲染brain数据到表格
+        // 在brain_index.html中找到renderBrainData函数
+        function renderBrainData(data) {
+            brainDataBody.innerHTML = '';
+            
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                
+                // 使用实际的字段名
+                row.innerHTML = `
+                    <td>${item['EG.PrecursorId'] || 'N/A'}</td>
+                    <td>${item.Brain_NC1 || 'N/A'}</td>
+                    <td>${item.Brain_NC2 || 'N/A'}</td>
+                    <td>${item.Brain_NC3 || 'N/A'}</td>
+                    <td>${item.Brain_9d1 || 'N/A'}</td>
+                    <td>${item.Brain_9d2 || 'N/A'}</td>
+                    <td>${item.Brain_9d3 || 'N/A'}</td>
+                    <td>${item.Brain_28d1 || 'N/A'}</td>
+                    <td>${item.Brain_28d2 || 'N/A'}</td>
+                    <td>${item.Brain_28d3 || 'N/A'}</td>
+                `;
+                
+                brainDataBody.appendChild(row);
+            });
+        }
+
+        // 更新分页控件
+        function updatePaginationControls(currentPage, totalPages) {
+            // 更新页面信息
+            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+            
+            // 更新按钮状态
+            prevPageBtn.disabled = currentPage <= 1;
+            nextPageBtn.disabled = currentPage >= totalPages;
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            initEventListeners();
+        });
+    </script>
+</body>
+</html>

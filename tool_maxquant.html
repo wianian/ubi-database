@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Statistical identification quantity - Ubi Database</title>
+    <title>Statistical Identification Quantity - Ubi Database</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <!-- SheetJS for Excel processing -->
@@ -65,7 +65,7 @@
     <div class="main-container">
         <div class="content-section" style="display: block;">
             <div class="data-window">
-                <div class="window-header">Statistical identification quantity</div>
+                <div class="window-header">Statistical Identification Quantity</div>
                 <div class="window-content" style="padding: 40px;">
                     <div class="tool-container">
                         <div class="tool-form">
@@ -366,6 +366,19 @@
 
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            // Validate Tool Mode + Modification Type combination
+            const toolMode = document.getElementById('tool-mode').value;
+            const modType = document.getElementById('modification-type').value;
+            
+            if (toolMode === 'spectronaut' && modType === 'Proteome') {
+                showError("Spectronaut mode with Proteome modification type is not yet supported. Please use Ubiquitination [GlyGly (K)].");
+                return;
+            }
+            if (toolMode === 'maxquant') {
+                showError("MaxQuant mode is not yet available. Please select Spectronaut as the tool mode.");
+                return;
+            }
             
             const fileInput = document.getElementById('file-upload');
             const modTypeSelect = document.getElementById('modification-type');
