@@ -72,15 +72,6 @@
                             <h3><i class="fas fa-file-upload"></i> Upload & Configure</h3>
                             <form id="analysis-form">
                                 <div class="form-group">
-                                    <label for="tool-mode">Tool Mode</label>
-                                    <select id="tool-mode" name="tool_mode" required>
-                                        <option value="spectronaut" selected>Spectronaut</option>
-                                        <option value="maxquant">MaxQuant</option>
-                                    </select>
-                                    <small>Select the software tool that generated your input data. Both modes use the same analysis pipeline.</small>
-                                </div>
-
-                                <div class="form-group">
                                     <label for="file-upload">Upload Result File (.xlsx, .tsv, .txt, .csv)</label>
                                     <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt, .csv" required>
                                 </div>
@@ -394,34 +385,15 @@
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            // Validate Tool Mode + Modification Type combination
-            const toolMode = document.getElementById('tool-mode').value;
-            const modType = document.getElementById('modification-type').value;
-
-            if (toolMode === 'maxquant' && modType === '[GlyGly (K)]') {
-                showError("MaxQuant mode with Ubiquitination is not yet supported. Please use Spectronaut for ubiquitinome analysis.");
-                return;
-            }
-            if (toolMode === 'maxquant' && modType === 'Proteome') {
-                showError("MaxQuant mode is not yet available. Please select Spectronaut as the tool mode.");
-                return;
-            }
-            if (toolMode === 'spectronaut' && modType === '[GlyGly (K)]') {
-                // Original mode - works normally
-            }
-            // spectronaut + proteome: allowed!
-            
             const fileInput = document.getElementById('file-upload');
+            const modType = document.getElementById('modification-type').value;
+            const modColIndex = modType === 'Proteome'
+                ? -1
+                : parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
             const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end
-
-            // Only read modColIndex for Ubiquitination mode
-            let modColIndex = -1;
-            if (modType === '[GlyGly (K)]') {
-                modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1;
-            }
 
             if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
@@ -438,7 +410,7 @@
                 sampleCounts: [],
                 groupCounts: [],
                 config: {
-                    toolMode, modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
+                    modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
                 groups: [],
@@ -931,16 +903,15 @@
 
             // Update filtered data title and description based on mode
             const modType = analysisContext.config.modType;
-            const toolMode = document.getElementById('tool-mode').value;
             const titleEl = document.getElementById('filtered-data-title');
             const descEl = document.getElementById('filtered-data-desc');
 
             if (modType === 'Proteome') {
                 titleEl.textContent = 'Filtered Data (Proteome)';
-                descEl.textContent = `All rows from ${toolMode === 'spectronaut' ? 'Spectronaut' : 'MaxQuant'} result file (whole proteome)`;
+                descEl.textContent = 'All rows from result file (whole proteome analysis)';
             } else {
                 titleEl.textContent = 'Filtered Data (Ubiquitinated)';
-                descEl.textContent = `Rows containing [GlyGly (K)] in the specified column (${toolMode === 'spectronaut' ? 'Spectronaut' : 'MaxQuant'} data)`;
+                descEl.textContent = 'Rows containing [GlyGly (K)] in the specified column';
             }
             
             // Show Warning if exists
