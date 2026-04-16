@@ -657,7 +657,13 @@
         function isValidValue(cell) {
             if (cell === undefined || cell === null || cell === "") return false;
             const str = String(cell).trim().toUpperCase();
-            return str !== "NAN" && str !== "NA";
+            if (str === "NAN" || str === "NA" || str === "NULL" || str === "NONE") return false;
+            // For numeric values: only count if > 0 (0 means not identified in LFQ intensity data)
+            const num = Number(cell);
+            if (!isNaN(num) && isFinite(num)) {
+                return num > 0;
+            }
+            return false;
         }
 
         function processRow(row, rowIndex) {
