@@ -36,7 +36,7 @@
                             <li class="nested-dropdown">
                                 <a href="#">Search software <i class="fas fa-chevron-right"></i></a>
                                 <ul class="dropdown-submenu">
-                                    <li><a href="tool_maxquant.html">Statistical identification quantity</a></li>
+                                    <li><a href="tool_maxquant.html">Statistical Identification Quantity</a></li>
                                 </ul>
                             </li>
                         </ul>
@@ -86,24 +86,24 @@
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="modification-type">Modification Type</label>
-                                    <select id="modification-type" name="modification_type" required>
+                                    <label for="modification-type">Analysis Type</label>
+                                    <select id="modification-type" name="modification_type" required onchange="toggleProteMode()">
                                         <option value="[GlyGly (K)]">Ubiquitination [GlyGly (K)]</option>
                                         <option value="Proteome">Proteome</option>
                                     </select>
-                                    <small>Filters rows containing exactly: [GlyGly (K)] or select Proteome for whole proteome analysis</small>
+                                    <small id="mod-type-hint">Filters rows containing [GlyGly (K)] for ubiquitinome analysis, or select Proteome for whole proteome identification counting</small>
                                 </div>
-                                
-                                <div class="form-group">
-                                    <label for="mod-column-index">Modification Column Number</label>
+
+                                <div class="form-group" id="mod-column-group">
+                                    <label for="mod-column-index" id="mod-column-label">Modification Column Number</label>
                                     <input type="number" id="mod-column-index" name="mod_column_index" min="1" placeholder="e.g. 5" required>
-                                    <small>Enter the column number (1-based index) containing modification information</small>
+                                    <small id="mod-column-hint">Enter the column number (1-based index) containing modification information</small>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="unique-id-column-index">Unique ID Column Number</label>
+                                    <label for="unique-id-column-index" id="unique-id-label">Unique ID Column Number</label>
                                     <input type="number" id="unique-id-column-index" name="unique_id_column_index" min="1" placeholder="e.g. 1" required>
-                                    <small>Enter the column number (1-based index) to use for unique counting (e.g. Protein ID)</small>
+                                    <small id="unique-id-hint">Enter the column number (1-based index) to use for unique protein identification counting</small>
                                 </div>
                                 
                                 <div class="form-group">
@@ -351,12 +351,39 @@
 
     <script>
         let readyData = {};
-        
+
+        // Toggle UI between Proteome and Ubiquitination modes
+        function toggleProteMode() {
+            const modType = document.getElementById('modification-type').value;
+            const modGroup = document.getElementById('mod-column-group');
+            const modLabel = document.getElementById('mod-column-label');
+            const modHint = document.getElementById('mod-column-hint');
+            const uniqueLabel = document.getElementById('unique-id-label');
+            const uniqueHint = document.getElementById('unique-id-hint');
+            const modInput = document.getElementById('mod-column-index');
+
+            if (modType === 'Proteome') {
+                // Proteome mode: hide modification column, update labels
+                modGroup.style.display = 'none';
+                modInput.removeAttribute('required');
+                uniqueLabel.textContent = 'Column Containing Protein Names';
+                uniqueHint.textContent = 'Enter the column number (1-based index) where protein names are listed. Each row represents one unique protein.';
+            } else {
+                // Ubiquitination mode: show modification column, restore original labels
+                modGroup.style.display = 'block';
+                modInput.setAttribute('required', '');
+                modLabel.textContent = 'Modification Column Number';
+                modHint.textContent = 'Enter the column number (1-based index) containing modification information';
+                uniqueLabel.textContent = 'Unique ID Column Number';
+                uniqueHint.textContent = 'Enter the column number (1-based index) to use for unique protein identification counting';
+            }
+        }
+
         // Analysis State Context
         let analysisContext = {
             header: null,
             filteredRows: [],
-            sampleCounts: [], 
+            sampleCounts: [],
             groupCounts: [],
             config: {},
             dataColIndices: [],
@@ -366,37 +393,44 @@
 
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             // Validate Tool Mode + Modification Type combination
             const toolMode = document.getElementById('tool-mode').value;
             const modType = document.getElementById('modification-type').value;
-            
-            if (toolMode === 'spectronaut' && modType === 'Proteome') {
-                showError("Spectronaut mode with Proteome modification type is not yet supported. Please use Ubiquitination [GlyGly (K)].");
+
+            if (toolMode === 'maxquant' && modType === '[GlyGly (K)]') {
+                showError("MaxQuant mode with Ubiquitination is not yet supported. Please use Spectronaut for ubiquitinome analysis.");
                 return;
             }
-            if (toolMode === 'maxquant') {
+            if (toolMode === 'maxquant' && modType === 'Proteome') {
                 showError("MaxQuant mode is not yet available. Please select Spectronaut as the tool mode.");
                 return;
             }
+            if (toolMode === 'spectronaut' && modType === '[GlyGly (K)]') {
+                // Original mode - works normally
+            }
+            // spectronaut + proteome: allowed!
             
             const fileInput = document.getElementById('file-upload');
-            const modTypeSelect = document.getElementById('modification-type');
-            const modType = modTypeSelect.value;
-            const modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
             const uniqueIdColIndex = parseInt(document.getElementById('unique-id-column-index').value) - 1; // 0-based
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
             const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end
-            
+
+            // Only read modColIndex for Ubiquitination mode
+            let modColIndex = -1;
+            if (modType === '[GlyGly (K)]') {
+                modColIndex = parseInt(document.getElementById('mod-column-index').value) - 1;
+            }
+
             if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
                 return;
             }
-            
+
             const file = fileInput.files[0];
             if (!file) return;
-            
+
             // Initialize Context
             analysisContext = {
                 header: null,
@@ -404,7 +438,7 @@
                 sampleCounts: [],
                 groupCounts: [],
                 config: {
-                    modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
+                    toolMode, modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
                 groups: [],
@@ -629,31 +663,29 @@
         function processRow(row, rowIndex) {
             const ctx = analysisContext;
             const cfg = ctx.config;
-            
+            const isProteomeMode = (cfg.modType === 'Proteome');
+
             // Step 1: Handle Header (Row 0)
             if (rowIndex === 0) {
                 ctx.header = row;
-                
+
                 // Validate Header
                 if (!row || row.length === 0) throw new Error("File has 0 columns. Check file format.");
-                if (cfg.modColIndex >= row.length) {
+                // Only validate modColIndex for Ubiquitination mode
+                if (!isProteomeMode && cfg.modColIndex >= row.length) {
                     throw new Error(`Modification column index (${cfg.modColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
                 if (cfg.uniqueIdColIndex >= row.length) {
-                    throw new Error(`Unique ID column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
+                    throw new Error(`Protein name column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
                 if (cfg.colEnd > row.length) {
                     throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
                 }
-                
+
                 // Initialize Data Column Indices
                 let removedSpecies = false;
-                
-                // Calculate actual loop limit: min(colEnd, row.length)
-                // We trust user input colEnd, but cap it at row.length just in case
-                // Use <= to ensure we include the last column if the user meant 1-based inclusive
                 const loopEnd = Math.min(cfg.colEnd, row.length);
-                
+
                 for (let i = cfg.colStart; i < loopEnd; i++) {
                     const colName = row[i];
                     // Smart filter: Remove "Species" column if detected
@@ -663,7 +695,7 @@
                     }
                     ctx.dataColIndices.push(i);
                 }
-                
+
                 // Validate Group/Replicates match
                 if (ctx.dataColIndices.length % cfg.repCount !== 0) {
                      let warningMsg = `Warning: Number of selected columns (${ctx.dataColIndices.length}) is not a multiple of replicates (${cfg.repCount}). The last group contains fewer samples than others.`;
@@ -673,51 +705,99 @@
                      console.warn(warningMsg);
                      ctx.warning = warningMsg;
                 }
-                
-                // Initialize Sets for Unique Counting
-                // Total Set (Calculated)
-                ctx.totalSet = new Set();
-                
-                // Sample Sets
-                ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
-                
-                // Group Sets
-                const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                ctx.groupSets = new Array(numGroups).fill(null).map(() => new Set());
-                
-                // Define Groups
-                ctx.groups = [];
-                for (let g = 0; g < numGroups; g++) {
-                    const start = g * cfg.repCount;
-                    const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                    const name = row[groupCols[0]] || `Group ${g+1}`; 
-                    ctx.groups.push({
-                        cols: groupCols,
-                        name: name
-                    });
+
+                // Initialize counting structures
+                if (isProteomeMode) {
+                    // Proteome mode: simple counters (each row = one protein, no duplicates expected)
+                    ctx.sampleCounts = new Array(ctx.dataColIndices.length).fill(0);
+                    ctx.groupCounts = [];
+                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                    for (let g = 0; g < numGroups; g++) {
+                        ctx.groupCounts.push(0);
+                    }
+                    ctx.totalCount = 0;
+
+                    // Define Groups
+                    ctx.groups = [];
+                    for (let g = 0; g < numGroups; g++) {
+                        const start = g * cfg.repCount;
+                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                        const name = row[groupCols[0]] || `Group ${g+1}`;
+                        ctx.groups.push({ cols: groupCols, name: name });
+                    }
+                } else {
+                    // Ubiquitination mode: use Sets for unique protein counting
+                    ctx.totalSet = new Set();
+                    ctx.sampleSets = new Array(ctx.dataColIndices.length).fill(null).map(() => new Set());
+                    ctx.groupSets = new Array(Math.ceil(ctx.dataColIndices.length / cfg.repCount)).fill(null).map(() => new Set());
+
+                    // Define Groups
+                    ctx.groups = [];
+                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                    for (let g = 0; g < numGroups; g++) {
+                        const start = g * cfg.repCount;
+                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                        const name = row[groupCols[0]] || `Group ${g+1}`;
+                        ctx.groups.push({ cols: groupCols, name: name });
+                    }
                 }
-                
+
                 ctx.filteredRows.push(row);
                 return;
             }
-            
+
             // Step 2: Handle Data Rows
-            if (!ctx.header) return; 
-            
-            // Filtering
-            const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
-            // Unique Value for Counting (e.g. Protein ID)
-            const uniqueVal = row[cfg.uniqueIdColIndex] ? String(row[cfg.uniqueIdColIndex]) : "";
-            
-            // If Proteome mode, include all rows; otherwise filter by modification type
-            const isProteomeMode = (cfg.modType === 'Proteome');
-            if (isProteomeMode || modVal.includes(cfg.modType)) {
-                ctx.filteredRows.push(row);
-                
-                // Counting Logic (Unique Identification Count):
-                // Count unique occurrences of the Unique ID Column Value (uniqueVal)
-                // for samples/groups that have valid quantitative values.
-                
+            if (!ctx.header) return;
+
+            // Filtering for Ubiquitination mode
+            if (!isProteomeMode) {
+                const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
+                if (!modVal.includes(cfg.modType)) return;
+            }
+
+            // Each row is a data entry
+            ctx.filteredRows.push(row);
+
+            if (isProteomeMode) {
+                // ========================================
+                // PROTEOME MODE: Each row = one unique protein
+                // If any sample has a valid value (non-0, non-NA, non-NaN) -> identified in that sample
+                // ========================================
+
+                let identifiedInAny = false;
+
+                // Per-sample counting: if this sample column has a valid value -> +1 for this protein in this sample
+                ctx.dataColIndices.forEach((colIdx, i) => {
+                    const cell = row[colIdx];
+                    if (isValidValue(cell)) {
+                        ctx.sampleCounts[i]++;
+                        identifiedInAny = true;
+                    }
+                });
+
+                // Group counting: if any sample in the group has a valid value -> +1 for this protein in this group
+                ctx.groups.forEach((group, gIdx) => {
+                    for (let colIdx of group.cols) {
+                        const cell = row[colIdx];
+                        if (isValidValue(cell)) {
+                            ctx.groupCounts[gIdx]++;
+                            break; // Only count once per group
+                        }
+                    }
+                });
+
+                // Total: if identified in any sample -> +1
+                if (identifiedInAny) {
+                    ctx.totalCount++;
+                }
+
+            } else {
+                // ========================================
+                // UBIQUITINATION MODE: Count unique proteins per sample/group
+                // ========================================
+
+                // Unique Value for Counting (e.g. Protein ID)
+                const uniqueVal = row[cfg.uniqueIdColIndex] ? String(row[cfg.uniqueIdColIndex]) : "";
                 let isIdentifiedInAny = false;
 
                 ctx.dataColIndices.forEach((colIdx, i) => {
@@ -727,11 +807,11 @@
                         isIdentifiedInAny = true;
                     }
                 });
-                
+
                 if (isIdentifiedInAny) {
                     ctx.totalSet.add(uniqueVal);
                 }
-                
+
                 ctx.groups.forEach((group, gIdx) => {
                     let hasValue = false;
                     for (let colIdx of group.cols) {
@@ -751,38 +831,46 @@
         function finishAnalysis(fileName) {
             const ctx = analysisContext;
             const header = ctx.header;
-            
-            // Step 1: Calculate Statistics (Convert Sets to Counts)
+            const isProteomeMode = (ctx.config.modType === 'Proteome');
+
+            // Step 1: Calculate Statistics
             updateProgress(95, "Calculating Statistics...");
-            
+
             setTimeout(() => {
-                // Compute final counts from Sets (Unique Identification)
-                ctx.totalCount = ctx.totalSet.size;
-                ctx.sampleCounts = ctx.sampleSets.map(s => s.size);
-                ctx.groupCounts = ctx.groupSets.map(s => s.size);
-                
+                if (isProteomeMode) {
+                    // Proteome mode: counts are already computed in processRow
+                    // ctx.sampleCounts and ctx.groupCounts are filled
+                    // ctx.totalCount is filled
+                    // Do nothing extra
+                } else {
+                    // Ubiquitination mode: convert Sets to counts
+                    ctx.totalCount = ctx.totalSet.size;
+                    ctx.sampleCounts = ctx.sampleSets.map(s => s.size);
+                    ctx.groupCounts = ctx.groupSets.map(s => s.size);
+                }
+
                 // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];
-                
+
                 // Add Total Row
                 sampleStats.push(["Total", ctx.totalCount]);
-                
+
                 ctx.dataColIndices.forEach((colIdx, i) => {
                     const colName = header[colIdx];
                     sampleStats.push([colName, ctx.sampleCounts[i]]);
                 });
-                
+
                 // Prepare Group Stats Data (Array of Arrays)
                 const groupStats = [["Group", "Columns", "Identification_Count"]];
-                
+
                 // Add Total Row
                 groupStats.push(["Total", "All Columns", ctx.totalCount]);
-                
+
                 ctx.groups.forEach((group, i) => {
                     const groupColNames = group.cols.map(idx => header[idx]).join(", ");
                     groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
                 });
-                
+
                 // Store raw data for lazy generation
                 readyData = {
                     ubi: ctx.filteredRows,
@@ -790,7 +878,7 @@
                     group: groupStats,
                     baseName: fileName.split('.')[0]
                 };
-                
+
                 updateProgress(100, "Analysis Complete!");
                 setTimeout(() => {
                     showLoading(false);
