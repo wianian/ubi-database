@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ubi Database</title>
+    <!-- Inter font - Nature/CNS style -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -59,10 +63,10 @@
     <div class="main-container" id="main-content">
         <!-- Search Section -->
         <section class="search-section">
-            <div class="logo">Ubi Database<sup>®</sup></div>
+            <div class="logo">Ubi Database<sup style="font-size: 1.5rem; color: #3182ce;">®</sup></div>
             <div class="search-box">
-                <input type="text" id="search-input" placeholder="Search for organs...">
-                <button class="search-btn">Search</button>
+                <input type="text" id="search-input" placeholder="Search for organs, proteins, or pathways...">
+                <button class="search-btn"><i class="fas fa-search" style="margin-right: 8px;"></i>Search</button>
             </div>
             <p class="description">
                 The PHD<sup>®</sup> research group mainly studies the ubiquitination modification, 
@@ -75,9 +79,11 @@
         <div class="content-section">
             <!-- Data Windows -->
             <div class="data-windows">
-                <!-- Organ Database 1 -->
+                <!-- Organ Database -->
                 <div class="data-window">
-                    <div class="window-header">Human Organ Database</div>
+                    <div class="window-header">
+                        <i class="fas fa-database" style="margin-right: 10px; color: #4299e1;"></i>Human Organ Database
+                    </div>
                     <div class="window-content">
                         <table class="organs-table">
                             <thead>
@@ -91,52 +97,52 @@
                                 <tr>
                                     <td>ORG001</td>
                                     <td><span class="organ-link" data-organ="brain">Brain</span></td>
-                                    <td>Nervous System</td>
+                                    <td><span class="badge">Nervous System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG002</td>
                                     <td><span class="organ-link" data-organ="heart">Heart</span></td>
-                                    <td>Cardiovascular</td>
+                                    <td><span class="badge">Cardiovascular</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG003</td>
                                     <td><span class="organ-link" data-organ="intestines">Intestines</span></td>
-                                    <td>Digestive System</td>
+                                    <td><span class="badge">Digestive System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG004</td>
                                     <td><span class="organ-link" data-organ="kidney">Kidney</span></td>
-                                    <td>Urinary System</td>
+                                    <td><span class="badge">Urinary System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG005</td>
                                     <td><span class="organ-link" data-organ="liver">Liver</span></td>
-                                    <td>Digestive System</td>
+                                    <td><span class="badge">Digestive System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG006</td>
                                     <td><span class="organ-link" data-organ="lung">Lung</span></td>
-                                    <td>Respiratory System</td>
+                                    <td><span class="badge">Respiratory System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG007</td>
                                     <td><span class="organ-link" data-organ="lymph">Lymph</span></td>
-                                    <td>Immune System</td>
+                                    <td><span class="badge">Immune System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG008</td>
                                     <td><span class="organ-link" data-organ="skin">Skin</span></td>
-                                    <td>Integumentary System</td>
+                                    <td><span class="badge">Integumentary System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG009</td>
                                     <td><span class="organ-link" data-organ="spleen">Spleen</span></td>
-                                    <td>Lymphatic System</td>
+                                    <td><span class="badge">Lymphatic System</span></td>
                                 </tr>
                                 <tr>
                                     <td>ORG010</td>
                                     <td><span class="organ-link" data-organ="testicle">Testicle</span></td>
-                                    <td>Reproductive System</td>
+                                    <td><span class="badge">Reproductive System</span></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -146,19 +152,17 @@
             
             <!-- Sidebar -->
             <div class="sidebar">
-                <!-- Learn Section -->
                 <div class="sidebar-box">
-                    <div class="sidebar-title">Learn</div>
+                    <div class="sidebar-title"><i class="fas fa-book-open" style="margin-right: 8px;"></i>Learn</div>
                     <div class="sidebar-links">
                         <a href="#">About Database</a>
-                        <a href="#">FAQ & User Guide</a>
+                        <a href="#">FAQ &amp; User Guide</a>
                         <a href="#">Data Sources</a>
                     </div>
                 </div>
                 
-                <!-- Find Section -->
                 <div class="sidebar-box">
-                    <div class="sidebar-title">Find</div>
+                    <div class="sidebar-title"><i class="fas fa-compass" style="margin-right: 8px;"></i>Find</div>
                     <div class="sidebar-links">
                         <a href="#">Advanced Search</a>
                         <a href="#">Organ Categories</a>
@@ -166,19 +170,17 @@
                     </div>
                 </div>
                 
-                <!-- Download Section -->
                 <div class="sidebar-box">
-                    <div class="sidebar-title">Download</div>
+                    <div class="sidebar-title"><i class="fas fa-download" style="margin-right: 8px;"></i>Download</div>
                     <div class="sidebar-links">
                         <a href="#">Dataset API</a>
                         <a href="#">Full Database Export</a>
                         <a href="#">Research Data</a>
                     </div>
                 </div>
-                
-                <!-- Explore Section -->
+
                 <div class="sidebar-box">
-                    <div class="sidebar-title">Explore</div>
+                    <div class="sidebar-title"><i class="fas fa-compass" style="margin-right: 8px;"></i>Explore</div>
                     <div class="sidebar-links">
                         <a href="#">Organ Systems</a>
                         <a href="#">Pathology Database</a>
@@ -210,10 +212,10 @@
                     
                     <div class="organ-content">
                         <div class="detail-description" id="detail-description">
-                            The brain is the central organ of the human nervous system, responsible for processing sensory information, regulating bodily functions, and enabling cognition and consciousness. It consists of the cerebrum, brainstem, and cerebellum.
+                            The brain is the central organ of the human nervous system, responsible for processing sensory information, regulating bodily functions, and enabling cognition and consciousness.
                         </div>
                         
-                        <!-- 数据表格容器 -->
+                        <!-- Data Table Container -->
                         <div id="brain-data-container">
                             <h3 class="detail-section-title">Brain Research Data</h3>
                             <div class="data-table-container">
@@ -249,7 +251,7 @@
                         <h3 class="detail-section-title">Organ Information</h3>
                         
                         <div class="organ-info-grid" id="organ-info-grid">
-                            <!-- 动态填充 -->
+                            <!-- Dynamically filled -->
                         </div>
                         
                         <h3 class="detail-section-title">Physiological Statistics</h3>
@@ -257,7 +259,7 @@
                         <div class="organ-stats">
                             <table class="stats-table">
                                 <tbody id="organ-stats-body">
-                                    <!-- 动态填充 -->
+                                    <!-- Dynamically filled -->
                                 </tbody>
                             </table>
                         </div>
@@ -267,7 +269,7 @@
                         <div class="organ-stats">
                             <table class="stats-table">
                                 <tbody id="key-structures-body">
-                                    <!-- 动态填充 -->
+                                    <!-- Dynamically filled -->
                                 </tbody>
                             </table>
                         </div>
@@ -284,7 +286,7 @@
             <a href="#">https://www.worldbank/</a>
         </div>
         <div class="copyright">
-            &copy; 2025 National Center for Biotechnology Information, Chinese National Library of Medicine
+            &copy; 2026 National Center for Biotechnology Information, Chinese National Library of Medicine
         </div>
     </footer>
     
