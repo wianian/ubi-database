@@ -518,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Nav Dropdown — 2-second hide delay on mouse leave
 // =============================================================================
 function initNavDropdowns() {
-    const HIDE_DELAY = 2000; // ms — time before dropdown hides after mouse leaves
+    const HIDE_DELAY = 1000; // ms — time before dropdown hides after mouse leaves
 
     document.querySelectorAll('.nav-item').forEach(item => {
         let closeTimer = null;
