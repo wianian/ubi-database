@@ -511,4 +511,46 @@ function updatePaginationControls(page, total) {
 // =============================================================================
 document.addEventListener('DOMContentLoaded', function() {
     initEventListeners();
+    initNavDropdowns();
 });
+
+// =============================================================================
+// Nav Dropdown — 2-second hide delay on mouse leave
+// =============================================================================
+function initNavDropdowns() {
+    const HIDE_DELAY = 2000; // ms — time before dropdown hides after mouse leaves
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+        let closeTimer = null;
+
+        function openDropdown() {
+            clearTimeout(closeTimer);
+            item.classList.add('dropdown-open');
+        }
+
+        function scheduleClose() {
+            closeTimer = setTimeout(() => {
+                item.classList.remove('dropdown-open');
+                // Also close any open submenus
+                item.querySelectorAll('.nested-dropdown').forEach(sub => {
+                    sub.classList.remove('submenu-open');
+                });
+            }, HIDE_DELAY);
+        }
+
+        item.addEventListener('mouseenter', openDropdown);
+        item.addEventListener('mouseleave', scheduleClose);
+
+        // Nested submenu: keep open while hovering inside it
+        item.querySelectorAll('.nested-dropdown').forEach(submenu => {
+            submenu.addEventListener('mouseenter', function() {
+                clearTimeout(closeTimer);
+                submenu.classList.add('submenu-open');
+            });
+            submenu.addEventListener('mouseleave', function() {
+                // Sub-menu delegates close to the parent nav-item's mouseleave
+                submenu.classList.remove('submenu-open');
+            });
+        });
+    });
+}
