@@ -705,17 +705,14 @@
                         ctx.groups.push({ cols: groupCols, name: name });
                     }
                 } else {
-                    // Ubiquitination / Acetylation mode:
-                    // Count non-NaN/NA values per sample column (row count, not unique protein count)
-                    ctx.sampleCounts = new Array(ctx.dataColIndices.length).fill(0);
-                    ctx.groupCounts = [];
-                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                    for (let g = 0; g < numGroups; g++) {
-                        ctx.groupCounts.push(0);
-                    }
-                    ctx.totalCount = 0;
+                    // Modification mode (Ubiquitination / Acetylation / future PTM types):
+                    // Rows are collected in ctx.filteredRows during processRow.
+                    // Deduplication and counting are done in finishAnalysis.
+                    // ctx.modDataRows holds filtered (not yet deduplicated) rows.
+                    ctx.modDataRows = []; // will accumulate filtered data rows
 
-                    // Define Groups
+                    // Define Groups (used in finishAnalysis)
+                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
                     ctx.groups = [];
                     for (let g = 0; g < numGroups; g++) {
                         const start = g * cfg.repCount;
@@ -732,16 +729,15 @@
             // Step 2: Handle Data Rows
             if (!ctx.header) return;
 
-            // Filtering for Ubiquitination mode
+            // Filtering for modification modes (Ubiquitination / Acetylation / future PTM types)
             if (!isProteomeMode) {
                 const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
                 if (!modVal.includes(cfg.modType)) return;
             }
 
-            // Each row is a data entry
-            ctx.filteredRows.push(row);
-
             if (isProteomeMode) {
+                // Proteome: collect rows for download and count on the fly
+                ctx.filteredRows.push(row);
                 // ========================================
                 // PROTEOME MODE: Each row = one unique protein
                 // If any sample has a valid value (non-0, non-NA, non-NaN) -> identified in that sample
@@ -776,53 +772,90 @@
 
             } else {
                 // ========================================
-                // UBIQUITINATION / ACETYLATION MODE:
-                // Count non-NaN/NA values per sample/group (same logic as Proteome)
-                // Each modified row is a site entry; count how many sites have valid
-                // intensity values in each sample/group column.
+                // MODIFICATION MODE (Ubiquitination / Acetylation / future PTM types):
+                // Collect filtered rows here; deduplication and counting happen in finishAnalysis.
                 // ========================================
-
-                let identifiedInAny = false;
-
-                // Per-sample counting: if this sample column has a valid value -> +1
-                ctx.dataColIndices.forEach((colIdx, i) => {
-                    const cell = row[colIdx];
-                    if (isValidValue(cell)) {
-                        ctx.sampleCounts[i]++;
-                        identifiedInAny = true;
-                    }
-                });
-
-                // Group counting: if any sample in the group has a valid value -> +1 for this site in this group
-                ctx.groups.forEach((group, gIdx) => {
-                    for (let colIdx of group.cols) {
-                        const cell = row[colIdx];
-                        if (isValidValue(cell)) {
-                            ctx.groupCounts[gIdx]++;
-                            break; // Only count once per group per site
-                        }
-                    }
-                });
-
-                // Total: if identified in any sample -> +1
-                if (identifiedInAny) {
-                    ctx.totalCount++;
-                }
+                ctx.modDataRows.push(row);
             }
         }
 
         function finishAnalysis(fileName) {
             const ctx = analysisContext;
+            const cfg = ctx.config;
             const header = ctx.header;
-            const isProteomeMode = (ctx.config.modType === 'Proteome');
+            const isProteomeMode = (cfg.modType === 'Proteome');
 
             // Step 1: Calculate Statistics
             updateProgress(95, "Calculating Statistics...");
 
             setTimeout(() => {
-                // Both Proteome and modification modes now use direct counters.
-                // ctx.sampleCounts, ctx.groupCounts, and ctx.totalCount are already filled
-                // in processRow(). No extra conversion needed.
+                if (!isProteomeMode) {
+                    // ============================================================
+                    // MODIFICATION MODE: Deduplicate by modColIndex value, then count
+                    //
+                    // Algorithm:
+                    //   1. Deduplicate rows by the value in modColIndex column
+                    //      (keep the first occurrence of each unique mod-site key)
+                    //   2. Build a matrix: deduplicated rows × data columns
+                    //   3. Sample count: for each sample column, count rows where
+                    //      the cell has a valid (non-NaN, non-NA, >0) value
+                    //   4. Group count: for each group (N biological replicates),
+                    //      count rows where AT LEAST ONE replicate column has a
+                    //      valid value (i.e. the row is NOT all-NaN in this group)
+                    //   5. Total count: rows where at least one sample has a valid value
+                    // ============================================================
+
+                    updateProgress(95, "Deduplicating modification sites...");
+
+                    // Step 1: Deduplicate by modColIndex value
+                    const seenKeys = new Set();
+                    const dedupRows = [];
+                    for (const row of ctx.modDataRows) {
+                        const key = row[cfg.modColIndex] !== undefined && row[cfg.modColIndex] !== null
+                            ? String(row[cfg.modColIndex])
+                            : "__empty__";
+                        if (!seenKeys.has(key)) {
+                            seenKeys.add(key);
+                            dedupRows.push(row);
+                        }
+                    }
+
+                    // Update filteredRows to deduplicated set (for download)
+                    // Keep header (first entry already added) then append dedup rows
+                    ctx.filteredRows = [header, ...dedupRows];
+
+                    // Step 2 & 3: Count per sample column
+                    const numSamples = ctx.dataColIndices.length;
+                    ctx.sampleCounts = new Array(numSamples).fill(0);
+                    ctx.groupCounts = new Array(ctx.groups.length).fill(0);
+                    ctx.totalCount = 0;
+
+                    for (const row of dedupRows) {
+                        let identifiedInAny = false;
+
+                        // Per-sample: count valid cells
+                        ctx.dataColIndices.forEach((colIdx, i) => {
+                            if (isValidValue(row[colIdx])) {
+                                ctx.sampleCounts[i]++;
+                                identifiedInAny = true;
+                            }
+                        });
+
+                        // Per-group: count row if at least one replicate has a valid value
+                        ctx.groups.forEach((group, gIdx) => {
+                            for (const colIdx of group.cols) {
+                                if (isValidValue(row[colIdx])) {
+                                    ctx.groupCounts[gIdx]++;
+                                    break; // Only count this row once per group
+                                }
+                            }
+                        });
+
+                        // Total: any sample identified
+                        if (identifiedInAny) ctx.totalCount++;
+                    }
+                }
+                // Proteome mode: ctx.sampleCounts / groupCounts / totalCount already filled by processRow
 
                 // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];

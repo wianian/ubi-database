@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ubi Database</title>
-    <!-- Inter font - Nature/CNS style -->
+    <title>PHD Database | Protein Homeostasis</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -12,37 +11,30 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <h1>PHD Research Group of Phoenix Center</h1>
             <h2>Chinese National Protein Science Center</h2>
-            <h3>Made in China</h3>
             <nav class="main-nav">
                 <ul class="nav-list">
                     <li class="nav-item">
-                        <a href="index.html">Home</a>
-                        <ul class="dropdown">
-                            <li><a href="#">Home 1</a></li>
-                            <li><a href="#">Home 2</a></li>
-                            <li><a href="#">Home 3</a></li>
-                        </ul>
+                        <a href="#" class="active" onclick="switchView('home-view')">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a href="#">Tools</a>
+                    <li class="nav-item dropdown-toggle">
+                        <a href="#">Tools <i class="fas fa-chevron-down" style="font-size: 0.7em; margin-left: 4px;"></i></a>
                         <ul class="dropdown">
                             <li class="nested-dropdown">
-                                <a href="#">Search software <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i></a>
+                                <a href="#">Software <i class="fas fa-chevron-right" style="font-size: 0.8em; margin-left: 5px;"></i></a>
                                 <ul class="dropdown-submenu">
-                                    <li><a href="tool_maxquant.html">Statistical Identification Quantity</a></li>
+                                    <li><a href="tool_maxquant.html">Statistical Quantity</a></li>
                                 </ul>
                             </li>
                         </ul>
                     </li>
-                    <li class="nav-item">
-                        <a href="#">Datasets</a>
+                    <li class="nav-item dropdown-toggle">
+                        <a href="#">Datasets <i class="fas fa-chevron-down" style="font-size: 0.7em; margin-left: 4px;"></i></a>
                         <ul class="dropdown">
-                            <li><a href="#">Crab-eating Macaque</a></li>
+                            <li><a href="#" onclick="switchView('macaque-view')">Crab-eating Macaque</a></li>
                             <li><a href="#">Yeast</a></li>
                             <li><a href="#">HeLa Cells</a></li>
                             <li><a href="#">Housefly</a></li>
@@ -54,240 +46,284 @@
                 </ul>
             </nav>
         </div>
-
+        <div class="header-right">
+            <button class="login-btn">Log in</button>
+        </div>
     </header>
     
-    <!-- Main Content Container -->
     <div class="main-container" id="main-content">
-        <!-- Search Section -->
-        <section class="search-section">
-            <div class="logo">Ubi Database<sup style="font-size: 1.5rem; color: #3182ce;">®</sup></div>
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="Search for organs, proteins, or pathways...">
-                <button class="search-btn"><i class="fas fa-search" style="margin-right: 8px;"></i>Search</button>
-            </div>
-            <p class="description">
-                The PHD<sup>®</sup> research group mainly studies the ubiquitination modification, 
-                focusing on ubiquitination technology, ubiquitination databases, and atypical ubiquitination 
-                research.
-            </p>
-        </section>
         
-        <!-- Content Section -->
-        <div class="content-section">
-            <!-- Data Windows -->
-            <div class="data-windows">
-                <!-- Organ Database -->
-                <div class="data-window">
-                    <div class="window-header">
-                        <i class="fas fa-database" style="margin-right: 10px; color: #4299e1;"></i>Human Organ Database
+        <div id="home-view">
+            <section class="search-section">
+                <div class="logo">Ubi Database<sup style="font-size: 1.5rem; color: var(--npg-red);">®</sup></div>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search by Protein, Gene, Accession or Tissue...">
+                    <button class="search-btn"><i class="fas fa-search" style="margin-right: 8px;"></i>Explore</button>
+                </div>
+                <p class="description">
+                    Access the world's most comprehensive repository for <strong>Ubiquitin-modified Protein Homeostasis</strong>. 
+                    Curating high-resolution proteomics and multi-organ landscapes across biological models.
+                </p>
+            </section>
+            
+            <div class="content-section">
+                <div class="home-main-column">
+                    <div class="home-grid">
+                        <div class="stat-card">
+                            <i class="fas fa-microscope"></i>
+                            <div class="stat-info">
+                                <h3>XX</h3>
+                                <p>Identified Sites</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-project-diagram"></i>
+                            <div class="stat-info">
+                                <h3>XX</h3>
+                                <p>Unique Proteins</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fas fa-database"></i>
+                            <div class="stat-info">
+                                <h3>XX</h3>
+                                <p>Raw MS Data</p>
+                            </div>
+                        </div>
                     </div>
+
+                    <div class="data-window">
+                        <div class="window-header">Recent Updates</div>
+                        <div class="window-content news-list">
+                            <div class="news-item">
+                                <span class="date">XX 20XX</span>
+                                <p>Crab-eating Macaque (<em>M. fascicularis</em>) multi-organ landscape released.</p>
+                            </div>
+                            <div class="news-item">
+                                <span class="date">XX 20XX</span>
+                                <p>Added new features for dataset integration.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar">
+                    <div class="sidebar-box">
+                        <div class="sidebar-title">Quick Links</div>
+                        <div class="sidebar-links">
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Documentation</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> API Reference</a>
+                            <a href="#"><i class="fas fa-external-link-alt"></i> Submit Data</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="macaque-view" style="display: none;">
+            <nav class="breadcrumb">
+                <a href="#" onclick="switchView('home-view')">Home</a>
+                <i class="fas fa-angle-right"></i>
+                <a href="#">Datasets</a>
+                <i class="fas fa-angle-right"></i>
+                <span class="active">Crab-eating Macaque</span>
+            </nav>
+
+            <div class="dataset-dashboard">
+                <div class="dashboard-main">
+                    <div class="species-header">
+                        <div class="species-icon"><i class="fas fa-paw"></i></div>
+                        <div class="species-text">
+                            <h2>Crab-eating Macaque Ubiquitinome</h2>
+                            <p>Species: <em>Macaca fascicularis</em> | Taxon: 9541</p>
+                        </div>
+                        <div class="accession-badge">PXDXXXXXX</div>
+                    </div>
+                    
+                    <div class="dashboard-stats">
+                        <div class="d-stat"><span>10</span><label>Organs</label></div>
+                        <div class="d-stat"><span>XX</span><label>Proteins</label></div>
+                        <div class="d-stat"><span>XX</span><label>PTM Sites</label></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section" style="grid-template-columns: 2fr 1fr;">
+                <div class="data-window">
+                    <div class="window-header">Technical Summary</div>
                     <div class="window-content">
-                        <table class="organs-table">
+                        <div class="summary-box">
+                            <p><strong>Enrichment Strategy:</strong> XX</p>
+                            <p><strong>Data Processing:</strong> XX</p>
+                            <div class="citation-block">
+                                <i class="fas fa-quote-left"></i>
+                                <p>XX. <em>XX</em> (20XX). <strong>PMID: XX</strong></p>
+                            </div>
+                        </div>
+                        
+                        <table class="organs-table modern-table">
                             <thead>
                                 <tr>
                                     <th>Organ ID</th>
-                                    <th>Organ Name</th>
-                                    <th>Category</th>
+                                    <th>Tissue Name</th>
+                                    <th>Detected Sites</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>ORG001</td>
-                                    <td><span class="organ-link" data-organ="brain">Brain</span></td>
-                                    <td><span class="badge">Nervous System</span></td>
+                                    <td><strong>Brain</strong></td>
+                                    <td>XX</td>
+                                    <td><button class="view-btn" onclick="showOrganDetail('brain')">Open View</button></td>
                                 </tr>
-                                <tr>
-                                    <td>ORG002</td>
-                                    <td><span class="organ-link" data-organ="heart">Heart</span></td>
-                                    <td><span class="badge">Cardiovascular</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG003</td>
-                                    <td><span class="organ-link" data-organ="intestines">Intestines</span></td>
-                                    <td><span class="badge">Digestive System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG004</td>
-                                    <td><span class="organ-link" data-organ="kidney">Kidney</span></td>
-                                    <td><span class="badge">Urinary System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG005</td>
-                                    <td><span class="organ-link" data-organ="liver">Liver</span></td>
-                                    <td><span class="badge">Digestive System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG006</td>
-                                    <td><span class="organ-link" data-organ="lung">Lung</span></td>
-                                    <td><span class="badge">Respiratory System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG007</td>
-                                    <td><span class="organ-link" data-organ="lymph">Lymph</span></td>
-                                    <td><span class="badge">Immune System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG008</td>
-                                    <td><span class="organ-link" data-organ="skin">Skin</span></td>
-                                    <td><span class="badge">Integumentary System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG009</td>
-                                    <td><span class="organ-link" data-organ="spleen">Spleen</span></td>
-                                    <td><span class="badge">Lymphatic System</span></td>
-                                </tr>
-                                <tr>
-                                    <td>ORG010</td>
-                                    <td><span class="organ-link" data-organ="testicle">Testicle</span></td>
-                                    <td><span class="badge">Reproductive System</span></td>
-                                </tr>
+                                <tr><td>ORG002</td><td><strong>Heart</strong></td><td>XX</td><td><button class="view-btn">Open View</button></td></tr>
+                                <tr><td>ORG003</td><td><strong>Intestines</strong></td><td>XX</td><td><button class="view-btn">Open View</button></td></tr>
+                                <tr><td>ORG004</td><td><strong>Kidney</strong></td><td>XX</td><td><button class="view-btn">Open View</button></td></tr>
+                                <tr><td>ORG005</td><td><strong>Liver</strong></td><td>XX</td><td><button class="view-btn">Open View</button></td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-            </div>
-            
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <div class="sidebar-box">
-                    <div class="sidebar-title"><i class="fas fa-book-open" style="margin-right: 8px;"></i>Learn</div>
-                    <div class="sidebar-links">
-                        <a href="#">About Database</a>
-                        <a href="#">FAQ &amp; User Guide</a>
-                        <a href="#">Data Sources</a>
-                    </div>
-                </div>
-                
-                <div class="sidebar-box">
-                    <div class="sidebar-title"><i class="fas fa-compass" style="margin-right: 8px;"></i>Find</div>
-                    <div class="sidebar-links">
-                        <a href="#">Advanced Search</a>
-                        <a href="#">Organ Categories</a>
-                        <a href="#">System Explorer</a>
-                    </div>
-                </div>
-                
-                <div class="sidebar-box">
-                    <div class="sidebar-title"><i class="fas fa-download" style="margin-right: 8px;"></i>Download</div>
-                    <div class="sidebar-links">
-                        <a href="#">Dataset API</a>
-                        <a href="#">Full Database Export</a>
-                        <a href="#">Research Data</a>
-                    </div>
-                </div>
 
-                <div class="sidebar-box">
-                    <div class="sidebar-title"><i class="fas fa-compass" style="margin-right: 8px;"></i>Explore</div>
-                    <div class="sidebar-links">
-                        <a href="#">Organ Systems</a>
-                        <a href="#">Pathology Database</a>
-                        <a href="#">Physiology Resources</a>
+                <div class="sidebar">
+                    <div class="sidebar-box info-sidebar">
+                        <div class="sidebar-title">Downloads</div>
+                        <div class="sidebar-links">
+                            <a href="#"><i class="fas fa-file-csv"></i> Sample Metadata</a>
+                            <a href="#"><i class="fas fa-file-excel"></i> Site Quantitation</a>
+                            <a href="#"><i class="fas fa-file-archive"></i> RAW Data</a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Organ Detail Page (hidden by default) -->
-    <div id="organ-detail" style="display: none;">
-        <div class="main-container">
-            <div class="organ-detail-container">
-                <a href="#" class="back-link" id="back-link">
-                    <i class="fas fa-arrow-left"></i> Back to Organ Database
-                </a>
+
+        <div id="organ-detail" style="display: none;">
+            <nav class="breadcrumb">
+                <a href="#" onclick="switchView('macaque-view')">Back to Dataset</a>
+                <i class="fas fa-angle-right"></i>
+                <span class="active" id="detail-nav-name">Organ Detail</span>
+            </nav>
+
+            <div class="organ-detail-window">
+                <div class="organ-header">
+                    <div class="organ-icon"><i class="fas fa-brain" id="detail-icon"></i></div>
+                    <div class="organ-title">
+                        <h2 id="detail-title">Organ Name</h2>
+                        <p id="detail-subtitle">Dataset: Crab-eating Macaque</p>
+                    </div>
+                </div>
                 
-                <div class="organ-detail-window">
-                    <div class="organ-header">
-                        <div class="organ-icon">
-                            <i class="fas fa-brain" id="organ-icon"></i>
+                <div class="organ-content">
+                    <h3 class="detail-section-title">Research Data (MySQL Database)</h3>
+                    <div class="data-table-container">
+                        <div class="loading" id="loading-indicator">
+                            <i class="fas fa-spinner"></i> Loading data from database...
                         </div>
-                        <div class="organ-title">
-                            <h2 id="detail-title">Brain</h2>
-                            <p id="detail-subtitle">Central Organ of the Nervous System</p>
-                        </div>
+                        <table class="data-table" id="brain-data-table" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Precursor ID</th>
+                                    <th>NC1</th><th>NC2</th><th>NC3</th>
+                                    <th>9d1</th><th>9d2</th><th>9d3</th>
+                                    <th>28d1</th><th>28d2</th><th>28d3</th>
+                                </tr>
+                            </thead>
+                            <tbody id="brain-data-body"></tbody>
+                        </table>
+                        <div class="error-message" id="error-message" style="display: none;"></div>
                     </div>
                     
-                    <div class="organ-content">
-                        <div class="detail-description" id="detail-description">
-                            The brain is the central organ of the human nervous system, responsible for processing sensory information, regulating bodily functions, and enabling cognition and consciousness.
-                        </div>
-                        
-                        <!-- Data Table Container (shown only for Brain) -->
-                        <div id="brain-data-container" style="display: none;">
-                            <h3 class="detail-section-title">Brain Research Data</h3>
-                            <div class="data-table-container">
-                                <div class="loading" id="loading-indicator">
-                                    <i class="fas fa-spinner"></i> Loading brain data...
-                                </div>
-                                <table class="data-table" id="brain-data-table" style="display: none;">
-                                    <thead>
-                                        <tr>
-                                            <th>Precursor ID</th>
-                                            <th>Brain NC1</th>
-                                            <th>Brain NC2</th>
-                                            <th>Brain NC3</th>
-                                            <th>Brain 9d1</th>
-                                            <th>Brain 9d2</th>
-                                            <th>Brain 9d3</th>
-                                            <th>Brain 28d1</th>
-                                            <th>Brain 28d2</th>
-                                            <th>Brain 28d3</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="brain-data-body"></tbody>
-                                </table>
-                                <div class="error-message" id="error-message" style="display: none;"></div>
-                            </div>
-                            <div class="pagination" id="pagination-controls" style="display: none;">
-                                <button id="prev-page" disabled>Previous</button>
-                                <div class="page-info" id="page-info">Page 1 of 1</div>
-                                <button id="next-page" disabled>Next</button>
-                            </div>
-                        </div>
-                        
-                        <h3 class="detail-section-title">Organ Information</h3>
-                        
-                        <div class="organ-info-grid" id="organ-info-grid">
-                            <!-- Dynamically filled -->
-                        </div>
-                        
-                        <h3 class="detail-section-title">Physiological Statistics</h3>
-                        
-                        <div class="organ-stats">
-                            <table class="stats-table">
-                                <tbody id="organ-stats-body">
-                                    <!-- Dynamically filled -->
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <h3 class="detail-section-title">Key Structures</h3>
-                        
-                        <div class="organ-stats">
-                            <table class="stats-table">
-                                <tbody id="key-structures-body">
-                                    <!-- Dynamically filled -->
-                                </tbody>
-                            </table>
-                        </div>
+                    <div class="pagination" id="pagination-controls" style="display: none;">
+                        <button id="prev-page">Previous</button>
+                        <div class="page-info" id="page-info">Page 1</div>
+                        <button id="next-page">Next</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Footer -->
     <footer class="footer">
-        <div class="footer-links">
-            <a href="#">An initial version of the China</a>
-            <a href="#">https://www.worldbank/</a>
-        </div>
         <div class="copyright">
-            &copy; 2026 National Center for Biotechnology Information, Chinese National Library of Medicine
+            &copy; 2026 National Center for Biotechnology Information | PHD Research Group
         </div>
     </footer>
     
-    <script src="app.js"></script>
+    <script>
+        // 常量与状态
+        const PAGE_SIZE = 20;
+        const API_ENDPOINT = 'http://localhost:5000/api/brain';
+        let currentPage = 1;
+        let totalPages = 1;
+
+        // 视图切换
+        function switchView(viewId) {
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('macaque-view').style.display = 'none';
+            document.getElementById('organ-detail').style.display = 'none';
+            
+            document.getElementById(viewId).style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 显示详情并加载数据
+        function showOrganDetail(organ) {
+            if (organ === 'brain') {
+                document.getElementById('detail-title').textContent = "Brain Ubiquitinome Profiling";
+                switchView('organ-detail');
+                loadBrainData(1);
+            }
+        }
+
+        // 从后端加载数据
+        function loadBrainData(page) {
+            const loading = document.getElementById('loading-indicator');
+            const table = document.getElementById('brain-data-table');
+            const pagination = document.getElementById('pagination-controls');
+            const error = document.getElementById('error-message');
+            const body = document.getElementById('brain-data-body');
+
+            loading.style.display = 'block';
+            table.style.display = 'none';
+            pagination.style.display = 'none';
+            error.style.display = 'none';
+
+            fetch(`${API_ENDPOINT}?page=${page}&per_page=${PAGE_SIZE}`)
+                .then(res => res.json())
+                .then(data => {
+                    body.innerHTML = '';
+                    data.data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${item['EG.PrecursorId']}</td>
+                            <td>${item.Brain_NC1}</td><td>${item.Brain_NC2}</td><td>${item.Brain_NC3}</td>
+                            <td>${item.Brain_9d1}</td><td>${item.Brain_9d2}</td><td>${item.Brain_9d3}</td>
+                            <td>${item.Brain_28d1}</td><td>${item.Brain_28d2}</td><td>${item.Brain_28d3}</td>
+                        `;
+                        body.appendChild(tr);
+                    });
+                    
+                    totalPages = Math.ceil(data.total / PAGE_SIZE);
+                    document.getElementById('page-info').textContent = `Page ${page} of ${totalPages}`;
+                    document.getElementById('prev-page').disabled = (page === 1);
+                    document.getElementById('next-page').disabled = (page === totalPages);
+
+                    loading.style.display = 'none';
+                    table.style.display = 'table';
+                    pagination.style.display = 'flex';
+                })
+                .catch(err => {
+                    loading.style.display = 'none';
+                    error.textContent = "Connection to Database Failed (Ensure Flask is running on port 5000)";
+                    error.style.display = 'block';
+                });
+        }
+
+        // 分页监听
+        document.getElementById('prev-page').onclick = () => { if(currentPage > 1) loadBrainData(--currentPage); };
+        document.getElementById('next-page').onclick = () => { if(currentPage < totalPages) loadBrainData(++currentPage); };
+    </script>
 </body>
 </html>
