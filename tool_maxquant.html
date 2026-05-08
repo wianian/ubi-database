@@ -12,6 +12,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- Chart.js for visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels plugin for bar annotations -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 </head>
 <body>
     <!-- Header -->
@@ -291,9 +293,10 @@
 
         .canvas-container {
             position: relative;
-            height: 50vh;
-            min-height: 400px;
+            /* Auto-height: scales with data count for optimal bar proportions */
+            min-height: 350px;
             width: 100%;
+            /* Dynamic height will be set by JS based on category count */
         }
 
         .download-btn {
@@ -960,6 +963,10 @@
             setTimeout(renderCharts, 100);
         }
 
+        // ============================================================
+        // CNS-style chart configuration (matching ggplot2 theme_bw)
+        // Auto-adjusts bar width based on number of categories
+        // ============================================================
         function renderCharts() {
             const ctx = analysisContext;
             const header = ctx.header;
@@ -968,10 +975,136 @@
             if (charts.sample) { charts.sample.destroy(); charts.sample = null; }
             if (charts.group) { charts.group.destroy(); charts.group = null; }
 
-            // Sample Chart
+            // --- Auto-sizing helpers ---
+            const numSamples = ctx.dataColIndices.length;
+            const numGroups  = ctx.groups.length;
+
+            // Bar width: adaptive to data count
+            // Few bars → wide & prominent (0.6-0.75)
+            // Many bars → slim but visible (0.5-0.7)
+            function autoBarWidth(count) {
+                if (count <= 3)   return 0.65;
+                if (count <= 8)   return 0.60;
+                if (count <= 15)  return 0.55;
+                if (count <= 30)  return 0.50;
+                if (count <= 60)  return 0.45;
+                return 0.38;      // 60+ samples
+            }
+
+            // Font size: adaptive
+            function autoFontSize(count, base) {
+                if (count <= 5)   return base + 2;
+                if (count <= 15)  return base;
+                if (count <= 40)  return Math.max(base - 1, 8);
+                return Math.max(base - 2, 7);
+            }
+
+            // Label rotation: adaptive
+            function autoLabelRotation(count) {
+                if (count <= 6)   return 0;
+                if (count <= 12)  return 30;
+                if (count <= 25)  return 45;
+                return 60;
+            }
+
+            // CNS color palette (from R code)
+            const CNS_BLUE     = '#2166AC';
+            const CNS_NAVY     = '#1B7837';
+            const CNS_DARKBLUE = '#053061';
+
+            // Common CNS theme for Chart.js
+            function cnsScaleConfig(yTitle) {
+                return {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: yTitle || 'Count',
+                            font: { size: 12, weight: 'bold', family: 'Arial, sans-serif' },
+                            padding: { top: 4, bottom: 8 }
+                        },
+                        ticks: {
+                            font: { size: 11, family: 'Arial, sans-serif' },
+                            padding: 4,
+                            color: '#333'
+                        },
+                        border: { display: true, color: '#666', width: 1 },
+                        grid: { display: false }          // No grid lines (CNS style)
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                size: autoFontSize(numSamples, 11),
+                                family: 'Arial, sans-serif'
+                            },
+                            maxRotation: autoLabelRotation(numSamples),
+                            minRotation: 0,
+                            autoSkip: false,
+                            padding: 4,
+                            color: '#333'
+                        },
+                        border: { display: true, color: '#666', width: 1 },
+                        grid: { display: false }           // No grid lines (CNS style)
+                    }
+                };
+            }
+
+            function cnsPluginConfig(titleText) {
+                return {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: titleText,
+                        font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' },
+                        padding: { top: 10, bottom: 15 },
+                        color: '#000'
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 2,
+                        font: {
+                            size: autoFontSize(numSamples, 10),
+                            weight: 'bold',
+                            family: 'Arial, sans-serif'
+                        },
+                        color: '#333',
+                        formatter: function(value) {
+                            if (value === 0) return '';
+                            return value >= 10000 ? (value / 1000).toFixed(1) + 'k' : value.toLocaleString();
+                        }
+                    }
+                };
+            }
+
+            // Register DataLabels plugin globally
+            Chart.register(ChartDataLabels);
+
+            // --- Dynamic canvas height for optimal proportions ---
+            function setCanvasHeight(canvasId, categoryCount) {
+                const el = document.getElementById(canvasId);
+                if (!el) return;
+                // Base height + per-category padding
+                // Few categories: compact (350-450px)
+                // Many categories: taller to keep bars readable (up to 70vh)
+                let h;
+                if (categoryCount <= 4)   h = 380;
+                else if (categoryCount <= 8)  h = 420;
+                else if (categoryCount <= 15) h = 480;
+                else if (categoryCount <= 30) h = 550;
+                else if (categoryCount <= 60) h = Math.min(window.innerHeight * 0.65, 650);
+                else h = Math.min(window.innerHeight * 0.72, 750);
+                el.style.height = h + 'px';
+            }
+            setCanvasHeight('sample-chart', numSamples + 1);   // +1 for "Total"
+            setCanvasHeight('group-chart', numGroups + 1);
+
+            // ==============================
+            // Sample Identification Chart
+            // ==============================
             const sampleLabels = ["Total", ...ctx.dataColIndices.map(i => header[i])];
-            const sampleData = [ctx.totalCount, ...ctx.sampleCounts];
-            
+            const sampleData   = [ctx.totalCount, ...ctx.sampleCounts];
+
             const sampleCtx = document.getElementById('sample-chart').getContext('2d');
             charts.sample = new Chart(sampleCtx, {
                 type: 'bar',
@@ -980,34 +1113,28 @@
                     datasets: [{
                         label: 'Identification Count',
                         data: sampleData,
-                        backgroundColor: 'rgba(40, 167, 69, 0.6)',
-                        borderColor: 'rgba(40, 167, 69, 1)',
-                        borderWidth: 1
+                        backgroundColor: CNS_BLUE,
+                        borderColor: 'white',
+                        borderWidth: 1.2,
+                        barPercentage: autoBarWidth(numSamples + 1), // +1 for "Total"
+                        categoryPercentage: autoBarWidth(numSamples + 1) * 1.05
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Count' }
-                        },
-                        x: {
-                            ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        title: { display: true, text: 'Sample Identification Counts' }
-                    }
+                    scales: cnsScaleConfig('Identified Peptides'),
+                    plugins: cnsPluginConfig('Sample Identification Counts'),
+                    layout: { padding: { top: 20 } }
                 }
             });
 
-            // Group Chart
+            // ==============================
+            // Group Identification Chart
+            // ==============================
             const groupLabels = ["Total", ...ctx.groups.map(g => g.name)];
-            const groupData = [ctx.totalCount, ...ctx.groupCounts];
-            
+            const groupData   = [ctx.totalCount, ...ctx.groupCounts];
+
             const groupCtx = document.getElementById('group-chart').getContext('2d');
             charts.group = new Chart(groupCtx, {
                 type: 'bar',
@@ -1016,27 +1143,19 @@
                     datasets: [{
                         label: 'Group Identification Count',
                         data: groupData,
-                        backgroundColor: 'rgba(0, 51, 102, 0.6)',
-                        borderColor: 'rgba(0, 51, 102, 1)',
-                        borderWidth: 1
+                        backgroundColor: CNS_NAVY,
+                        borderColor: 'white',
+                        borderWidth: 1.2,
+                        barPercentage: autoBarWidth(numGroups + 1),
+                        categoryPercentage: autoBarWidth(numGroups + 1) * 1.05
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Count' }
-                        },
-                        x: {
-                            ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        title: { display: true, text: 'Group Identification Counts' }
-                    }
+                    scales: cnsScaleConfig('Identified Peptides'),
+                    plugins: cnsPluginConfig('Group Identification Counts'),
+                    layout: { padding: { top: 20 } }
                 }
             });
         }
