@@ -127,12 +127,14 @@ body {
     list-style: none;
     display: none;
     z-index: 1000;
-    margin-top: 10px;
+    /* 去掉了原来太大的 margin-top，防止鼠标滑过去时断开 hover 状态 */
+    margin-top: 2px; 
 }
 
-.nav-item.dropdown-open .dropdown {
+/* 关键修复：改回使用 :hover 来触发显示 */
+.nav-item:hover .dropdown {
     display: block;
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn 0.2s ease-out forwards;
 }
 
 .dropdown li a {
@@ -156,7 +158,7 @@ body {
     display: none;
 }
 
-/* Nested Dropdown */
+/* Nested Dropdown (二级菜单) */
 .nested-dropdown {
     position: relative;
 }
@@ -174,12 +176,13 @@ body {
     list-style: none;
     display: none;
     z-index: 1001;
-    margin-left: 5px;
+    margin-left: 2px; /* 同样缩小缝隙 */
 }
 
-.nested-dropdown.submenu-open .dropdown-submenu {
+/* 关键修复：改回使用 :hover 触发二级菜单 */
+.nested-dropdown:hover .dropdown-submenu {
     display: block;
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn 0.2s ease-out forwards;
 }
 
 @keyframes fadeIn {
@@ -442,6 +445,26 @@ body {
 /* ==========================================================================
    Organ Detail Page Styles
    ========================================================================== */
+   
+/* 详情页特有的面包屑与返回链接样式 */
+#organ-detail .breadcrumb a {
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--npg-light-blue);
+}
+
+/* 确保详情页窗口有足够的层级感 */
+.organ-detail-window {
+    background: var(--bg-card);
+    border-radius: 16px;
+    box-shadow: var(--shadow-hover);
+    margin-top: 10px;
+    border: 1px solid var(--border-light);
+}
+
+/* 之前提供的 .data-table 相关样式已经能很好地处理数据库表格的展示 */
+
+
 .organ-detail-container {
     max-width: 1200px;
     margin: 20px auto;
@@ -710,3 +733,377 @@ body {
         max-height: 400px;
     }
 }
+
+/* ==========================================================================
+   Dataset Dashboard Styles (Crab-eating Macaque Page)
+   ========================================================================== */
+
+/* Breadcrumb Navigation */
+.breadcrumb {
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.breadcrumb a {
+    color: var(--npg-blue);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb .fas {
+    font-size: 0.8rem;
+    color: #cbd5e0;
+}
+
+.breadcrumb .current {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+/* Dataset Hero Header Card */
+.dataset-header-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--border-light);
+    padding: 30px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.dataset-title-area {
+    flex: 1;
+    min-width: 300px;
+}
+
+.dataset-title-area h2 {
+    font-size: 1.8rem;
+    color: var(--npg-navy);
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.dataset-title-area p {
+    color: var(--text-main);
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+}
+
+.meta-tags {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.meta-tag {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+}
+
+/* Stats Grid (Big Numbers) */
+.dataset-stats-grid {
+    display: flex;
+    gap: 20px;
+}
+
+.stat-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    min-width: 140px;
+}
+
+.stat-num {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--npg-blue);
+    margin-bottom: 5px;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+/* Metadata Key-Value Table */
+.metadata-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.metadata-table th, .metadata-table td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-light);
+    text-align: left;
+    vertical-align: top;
+}
+
+.metadata-table th {
+    background-color: #f8fafc;
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.metadata-table td {
+    color: var(--text-main);
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.metadata-table tr:last-child th,
+.metadata-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Specific Link Styles */
+.pride-link {
+    color: #d92128; /* Academic Red for DB accessions */
+    font-weight: 700;
+    text-decoration: none;
+    font-family: monospace;
+    font-size: 1.05rem;
+}
+
+.pride-link:hover {
+    text-decoration: underline;
+}
+
+.pubmed-link {
+    display: inline-block;
+    margin-top: 8px;
+    color: #3182ce;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.pubmed-link:hover {
+    text-decoration: underline;
+}
+
+.literature-citation {
+    background: #f8fafc;
+    padding: 15px;
+    border-left: 4px solid var(--npg-blue);
+    border-radius: 4px;
+}
+
+/* Action Buttons inside Tables */
+.action-btn {
+    background: white;
+    color: var(--npg-blue);
+    border: 1px solid var(--npg-blue);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: var(--npg-blue);
+    color: white;
+}
+
+/* Make sure dataset view looks good on mobile */
+@media (max-width: 900px) {
+    .dataset-header-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .dataset-stats-grid {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .stat-box {
+        flex: 1;
+        min-width: unset;
+        padding: 15px 10px;
+    }
+    .metadata-table th, .metadata-table td {
+        display: block;
+        width: 100%;
+    }
+    .metadata-table th {
+        border-bottom: none;
+        padding-bottom: 5px;
+    }
+}
+
+/* ==========================================================================
+   Refined Academic Aesthetics - Professional Add-ons
+   ========================================================================== */
+
+/* Navbar Active State */
+.nav-item > a.active {
+    color: #ffffff;
+    border-bottom: 2px solid var(--npg-light-blue);
+}
+
+/* Home Page Stats Layout */
+.home-main-column {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.home-grid {
+    display: grid;
+    /* 采用 auto-fit 保证屏幕不够宽时自动换行，避免重叠与挤压 */
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.stat-card {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: transform 0.3s;
+}
+
+.stat-card:hover { transform: translateY(-5px); }
+
+.stat-card i {
+    font-size: 2rem;
+    color: var(--npg-light-blue);
+    opacity: 0.8;
+}
+
+.stat-info h3 { font-size: 1.5rem; color: var(--npg-navy); }
+.stat-info p { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+/* News List on Home */
+.news-list { display: flex; flex-direction: column; gap: 15px; }
+.news-item { border-bottom: 1px solid var(--border-light); padding-bottom: 10px; }
+.news-item .date { font-size: 0.75rem; color: var(--npg-red); font-weight: 700; text-transform: uppercase; }
+.news-item p { font-size: 0.95rem; margin-top: 4px; }
+
+/* ==========================================================================
+   Dataset Dashboard (The Macaque Detail Page)
+   ========================================================================== */
+.breadcrumb {
+    margin: 0 0 25px 0;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.breadcrumb a { color: var(--npg-light-blue); text-decoration: none; }
+.breadcrumb .active { color: var(--npg-navy); font-weight: 600; }
+
+.dataset-dashboard {
+    background: linear-gradient(135deg, var(--npg-navy) 0%, #1a365d 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 16px;
+    margin-bottom: 35px;
+    position: relative;
+    overflow: hidden;
+}
+
+.species-header {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.species-icon {
+    width: 64px;
+    height: 64px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.species-text h2 { font-size: 2.2rem; letter-spacing: -1px; }
+.species-text p { opacity: 0.7; font-size: 1rem; }
+
+.accession-badge {
+    margin-left: auto;
+    background: var(--npg-red);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-weight: 700;
+}
+
+.dashboard-stats {
+    display: flex;
+    gap: 50px;
+}
+
+.d-stat { display: flex; flex-direction: column; }
+.d-stat span { font-size: 2.2rem; font-weight: 800; color: #63b3ed; }
+.d-stat label { font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 1px; }
+
+/* Summary & Citation */
+.summary-box {
+    margin-bottom: 25px;
+    color: var(--text-main);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.citation-block {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f8fafc;
+    border-left: 4px solid var(--npg-navy);
+    border-radius: 4px;
+    font-style: italic;
+}
+
+.citation-block i { color: #cbd5e0; margin-bottom: 10px; font-size: 1.2rem; }
+
+/* Table Adjustments */
+.modern-table { margin-top: 20px; }
+.view-btn {
+    background: transparent;
+    border: 1px solid var(--npg-light-blue);
+    color: var(--npg-light-blue);
+    padding: 6px 15px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.view-btn:hover {
+    background: var(--npg-light-blue);
+    color: white;
+}
+
+.info-sidebar { background: #edf2f7; border-color: #cbd5e0; }
