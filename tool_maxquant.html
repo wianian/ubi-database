@@ -80,6 +80,7 @@
                                     <label for="modification-type">Analysis Type</label>
                                     <select id="modification-type" name="modification_type" required onchange="toggleProteMode()">
                                         <option value="[GlyGly (K)]">Ubiquitination [GlyGly (K)]</option>
+                                        <option value="[Acetyl (K)]">Acetylation [Acetyl (K)]</option>
                                         <option value="Proteome">Proteome</option>
                                     </select>
                                     <small id="mod-type-hint">Filters rows containing [GlyGly (K)] for ubiquitinome analysis, or select Proteome for whole proteome identification counting</small>
@@ -343,12 +344,13 @@
     <script>
         let readyData = {};
 
-        // Toggle UI between Proteome and Ubiquitination modes
+        // Toggle UI between Proteome, Ubiquitination, and Acetylation modes
         function toggleProteMode() {
             const modType = document.getElementById('modification-type').value;
             const modGroup = document.getElementById('mod-column-group');
             const modLabel = document.getElementById('mod-column-label');
             const modHint = document.getElementById('mod-column-hint');
+            const modTypeHint = document.getElementById('mod-type-hint');
             const uniqueLabel = document.getElementById('unique-id-label');
             const uniqueHint = document.getElementById('unique-id-hint');
             const modInput = document.getElementById('mod-column-index');
@@ -359,6 +361,16 @@
                 modInput.removeAttribute('required');
                 uniqueLabel.textContent = 'Column Containing Protein Names';
                 uniqueHint.textContent = 'Enter the column number (1-based index) where protein names are listed. Each row represents one unique protein.';
+                modTypeHint.textContent = 'Select Proteome for whole proteome identification counting. No modification filtering is applied.';
+            } else if (modType === '[Acetyl (K)]') {
+                // Acetylation mode: show modification column, use acetylation labels
+                modGroup.style.display = 'block';
+                modInput.setAttribute('required', '');
+                modLabel.textContent = 'Modification Column Number';
+                modHint.textContent = 'Enter the column number (1-based index) containing modification information';
+                uniqueLabel.textContent = 'Unique ID Column Number';
+                uniqueHint.textContent = 'Enter the column number (1-based index) to use for unique protein identification counting';
+                modTypeHint.textContent = 'Filters rows containing [Acetyl (K)] in the specified column for acetylome analysis.';
             } else {
                 // Ubiquitination mode: show modification column, restore original labels
                 modGroup.style.display = 'block';
@@ -367,6 +379,7 @@
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
                 uniqueLabel.textContent = 'Unique ID Column Number';
                 uniqueHint.textContent = 'Enter the column number (1-based index) to use for unique protein identification counting';
+                modTypeHint.textContent = 'Filters rows containing [GlyGly (K)] in the specified column for ubiquitinome analysis.';
             }
         }
 
@@ -909,6 +922,9 @@
             if (modType === 'Proteome') {
                 titleEl.textContent = 'Filtered Data (Proteome)';
                 descEl.textContent = 'All rows from result file (whole proteome analysis)';
+            } else if (modType === '[Acetyl (K)]') {
+                titleEl.textContent = 'Filtered Data (Acetylated)';
+                descEl.textContent = 'Rows containing [Acetyl (K)] in the specified column';
             } else {
                 titleEl.textContent = 'Filtered Data (Ubiquitinated)';
                 descEl.textContent = 'Rows containing [GlyGly (K)] in the specified column';
