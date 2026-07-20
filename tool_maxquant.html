@@ -549,13 +549,14 @@
                 },
                 dataColIndices: [],
                 groups: [],
+                selectedOutputIndices: null,
                 startTime: Date.now()
             };
             
             showLoading(true);
             
             const fileName = file.name.toLowerCase();
-            // Use SheetJS for Excel files, PapaParse for Text/CSV/TSV
+            // Use SheetJS for Excel files, selected-column streaming for TSV/TXT, PapaParse for CSV
             if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
                 updateProgress(0, "Reading Excel file... (This might take a while for large files)");
                 // Offload to Worker to prevent UI freezing
@@ -694,19 +695,18 @@
 
 
         function processText(file) {
+            const lowerName = file.name.toLowerCase();
+            if (lowerName.endsWith('.tsv') || lowerName.endsWith('.txt')) {
+                processDelimitedTextSelected(file, '\t');
+                return;
+            }
+
             let rowCount = 0;
             const fileSize = file.size;
-            const lowerName = file.name.toLowerCase();
-            const parserConfig = {};
-            if (lowerName.endsWith('.tsv') || lowerName.endsWith('.txt')) {
-                parserConfig.delimiter = '\t';
-                parserConfig.fastMode = true;
-            }
             
             updateProgress(0, "Initializing stream...");
             
             Papa.parse(file, {
-                ...parserConfig,
                 worker: true,
                 chunkSize: 1024 * 1024 * 5, // 5MB chunks
                 chunk: function(results, parser) {
@@ -766,6 +766,113 @@
                 skipEmptyLines: true,
                 dynamicTyping: false
             });
+        }
+
+        function getRequiredColumnIndices(cfg) {
+            const required = new Set();
+            if (cfg.modType === 'Proteome') {
+                required.add(cfg.uniqueIdColIndex);
+            } else {
+                required.add(cfg.modColIndex);
+            }
+            for (let i = cfg.colStart; i < cfg.colEnd; i++) {
+                required.add(i);
+            }
+            return Array.from(required).filter(i => i >= 0).sort((a, b) => a - b);
+        }
+
+        function extractSelectedColumns(line, delimiter, selectedIndices) {
+            const row = [];
+            let selectedPointer = 0;
+            let selectedIndex = selectedIndices[selectedPointer];
+            let colIndex = 0;
+            let fieldStart = 0;
+
+            for (let i = 0; i <= line.length; i++) {
+                if (i === line.length || line[i] === delimiter) {
+                    if (colIndex === selectedIndex) {
+                        row[colIndex] = line.slice(fieldStart, i);
+                        selectedPointer++;
+                        selectedIndex = selectedIndices[selectedPointer];
+                        if (selectedIndex === undefined) break;
+                    }
+                    colIndex++;
+                    fieldStart = i + 1;
+                }
+            }
+
+            return row;
+        }
+
+        async function processDelimitedTextSelected(file, delimiter) {
+            let rowCount = 0;
+            let buffered = "";
+            let loadedBytes = 0;
+            const decoder = new TextDecoder();
+            const selectedIndices = getRequiredColumnIndices(analysisContext.config);
+            analysisContext.selectedOutputIndices = selectedIndices;
+            const reader = file.stream().getReader();
+
+            updateProgress(0, "Initializing selected-column stream...");
+
+            function processLine(line) {
+                if (line.endsWith('\r')) line = line.slice(0, -1);
+                if (!line.trim()) return;
+
+                if (rowCount === 0) {
+                    const header = line.split(delimiter);
+                    processRow(header, 0);
+                } else {
+                    const row = extractSelectedColumns(line, delimiter, selectedIndices);
+                    processRow(row, rowCount);
+                }
+                rowCount++;
+            }
+
+            try {
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    loadedBytes += value.byteLength;
+                    buffered += decoder.decode(value, { stream: true });
+                    const lines = buffered.split(/\n/);
+                    buffered = lines.pop() || "";
+
+                    for (const line of lines) {
+                        processLine(line);
+                    }
+
+                    const rawPercent = loadedBytes / file.size;
+                    const percent = Math.floor(rawPercent * 90);
+                    const elapsed = (Date.now() - analysisContext.startTime) / 1000;
+                    const rate = loadedBytes / elapsed;
+                    const remainingBytes = file.size - loadedBytes;
+                    const eta = remainingBytes / rate;
+                    const etaText = isFinite(eta) && eta > 0 ? ` - ETA: ${formatTime(eta)}` : "";
+                    updateProgress(percent, `Processing selected columns... ${Math.round(rawPercent * 100)}%${etaText}`);
+
+                    // Yield to the browser so progress and cancellation remain responsive on large files.
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+
+                buffered += decoder.decode();
+                if (buffered) processLine(buffered);
+
+                if (rowCount === 0) {
+                    showError("File appears to be empty.");
+                    showLoading(false);
+                    return;
+                }
+
+                updateProgress(90, "Finalizing results...");
+                setTimeout(() => finishAnalysis(file.name), 100);
+            } catch (err) {
+                showError("Error parsing file: " + err.message);
+                showLoading(false);
+            } finally {
+                reader.releaseLock();
+            }
         }
 
         function isValidValue(cell) {
@@ -978,8 +1085,12 @@
                     });
                 }
 
+                const filteredOutputRows = ctx.selectedOutputIndices
+                    ? ctx.filteredRows.map(row => ctx.selectedOutputIndices.map(idx => row[idx] ?? ""))
+                    : ctx.filteredRows;
+
                 readyData = {
-                    ubi: ctx.filteredRows,
+                    ubi: filteredOutputRows,
                     sample: sampleStats,
                     group: groupStats,
                     specificity: specificityStats,
