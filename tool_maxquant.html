@@ -83,11 +83,19 @@
                                 <div class="form-group">
                                     <label for="modification-type">Analysis Type</label>
                                     <select id="modification-type" name="modification_type" required onchange="toggleProteMode()">
-                                        <option value="[GlyGly (K)]">Ubiquitination [GlyGly (K)]</option>
-                                        <option value="[Acetyl (K)]">Acetylation [Acetyl (K)]</option>
+                                        <option value="[GlyGly(k)]">Ubiquitination [GlyGly(k)]</option>
+                                        <option value="[Acetyl(K)]">Acetylation [Acetyl(K)]</option>
+                                        <option value="[Kla]">Lactylation [Kla]</option>
+                                        <option value="Custom">Custom modification text</option>
                                         <option value="Proteome">Proteome</option>
                                     </select>
-                                    <small id="mod-type-hint">Filters rows containing [GlyGly (K)] for ubiquitinome analysis, or select Proteome for whole proteome identification counting</small>
+                                    <small id="mod-type-hint">Filters rows containing [GlyGly(k)] for ubiquitinome analysis, or select Proteome for whole proteome identification counting</small>
+                                </div>
+
+                                <div class="form-group" id="custom-mod-group" style="display: none;">
+                                    <label for="custom-mod-pattern">Custom Modification Text</label>
+                                    <input type="text" id="custom-mod-pattern" name="custom_mod_pattern" placeholder="e.g. [Kla]">
+                                    <small>Rows are kept when the modification column contains this exact text.</small>
                                 </div>
 
                                 <div class="form-group" id="mod-column-group">
@@ -137,7 +145,7 @@
                                             <i class="fas fa-file-excel"></i>
                                             <h4 id="filtered-data-title">Filtered Data (Ubiquitinated)</h4>
                                         </div>
-                                        <p id="filtered-data-desc">Rows containing [GlyGly (K)] in the specified column</p>
+                                        <p id="filtered-data-desc">Rows containing [GlyGly(k)] in the specified column</p>
                                     </div>
                                     <div class="card-right">
                                         <button class="download-btn" id="download-ubi"><i class="fas fa-download"></i> Download Filtered Data</button>
@@ -392,7 +400,32 @@
     <script>
         let readyData = {};
 
-        // Toggle UI between Proteome, Ubiquitination, and Acetylation modes
+        function getModificationPattern() {
+            const modType = document.getElementById('modification-type').value;
+            if (modType !== 'Custom') return modType;
+            return document.getElementById('custom-mod-pattern').value.trim();
+        }
+
+        function getModificationPatterns(modType, modPattern) {
+            if (modType === '[GlyGly(k)]') return ['[GlyGly(k)]', '[GlyGly(K)]', '[GlyGly (k)]', '[GlyGly (K)]'];
+            if (modType === '[Acetyl(K)]') return ['[Acetyl(K)]', '[Acetyl(k)]', '[Acetyl (K)]', '[Acetyl (k)]'];
+            return modPattern ? [modPattern] : [];
+        }
+
+        function hasModificationPattern(value, patterns) {
+            const text = String(value);
+            return patterns.some(pattern => text.includes(pattern));
+        }
+
+        function getModificationLabel(pattern) {
+            const modType = analysisContext.config.modType;
+            if (modType === '[GlyGly(k)]') return 'Ubiquitinated';
+            if (modType === '[Acetyl(K)]') return 'Acetylated';
+            if (modType === '[Kla]') return 'Lactylated';
+            return `Modified (${pattern || 'Custom'})`;
+        }
+
+        // Toggle UI between Proteome and modification modes
         function toggleProteMode() {
             const modType = document.getElementById('modification-type').value;
             const modGroup = document.getElementById('mod-column-group');
@@ -400,6 +433,8 @@
             const modHint = document.getElementById('mod-column-hint');
             const modTypeHint = document.getElementById('mod-type-hint');
             const modInput = document.getElementById('mod-column-index');
+            const customModGroup = document.getElementById('custom-mod-group');
+            const customModInput = document.getElementById('custom-mod-pattern');
             const uniqueGroup = document.getElementById('unique-id-group');
             const uniqueInput = document.getElementById('unique-id-column-index');
 
@@ -407,27 +442,53 @@
                 // Proteome mode: hide modification column
                 modGroup.style.display = 'none';
                 modInput.removeAttribute('required');
+                customModGroup.style.display = 'none';
+                customModInput.removeAttribute('required');
                 uniqueGroup.style.display = 'block';
                 uniqueInput.setAttribute('required', '');
                 modTypeHint.textContent = 'Select Proteome for whole proteome identification counting. Counts are deduplicated by the selected unique protein ID column after removing NA/NaN/empty/NULL values.';
-            } else if (modType === '[Acetyl (K)]') {
-                // Acetylation mode: show modification column
+            } else if (modType === 'Custom') {
                 modGroup.style.display = 'block';
                 modInput.setAttribute('required', '');
+                customModGroup.style.display = 'block';
+                customModInput.setAttribute('required', '');
                 uniqueGroup.style.display = 'none';
                 uniqueInput.removeAttribute('required');
                 modLabel.textContent = 'Modification Column Number';
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
-                modTypeHint.textContent = 'Filters rows containing [Acetyl (K)] in the specified column for acetylome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
+                modTypeHint.textContent = 'Filters rows containing your custom text in the specified column. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
+            } else if (modType === '[Acetyl(K)]') {
+                // Acetylation mode: show modification column
+                modGroup.style.display = 'block';
+                modInput.setAttribute('required', '');
+                customModGroup.style.display = 'none';
+                customModInput.removeAttribute('required');
+                uniqueGroup.style.display = 'none';
+                uniqueInput.removeAttribute('required');
+                modLabel.textContent = 'Modification Column Number';
+                modHint.textContent = 'Enter the column number (1-based index) containing modification information';
+                modTypeHint.textContent = 'Filters rows containing [Acetyl(K)] in the specified column for acetylome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
+            } else if (modType === '[Kla]') {
+                modGroup.style.display = 'block';
+                modInput.setAttribute('required', '');
+                customModGroup.style.display = 'none';
+                customModInput.removeAttribute('required');
+                uniqueGroup.style.display = 'none';
+                uniqueInput.removeAttribute('required');
+                modLabel.textContent = 'Modification Column Number';
+                modHint.textContent = 'Enter the column number (1-based index) containing modification information';
+                modTypeHint.textContent = 'Filters rows containing [Kla] in the specified column for lactylome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
             } else {
                 // Ubiquitination mode: show modification column
                 modGroup.style.display = 'block';
                 modInput.setAttribute('required', '');
+                customModGroup.style.display = 'none';
+                customModInput.removeAttribute('required');
                 uniqueGroup.style.display = 'none';
                 uniqueInput.removeAttribute('required');
                 modLabel.textContent = 'Modification Column Number';
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
-                modTypeHint.textContent = 'Filters rows containing [GlyGly (K)] in the specified column for ubiquitinome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
+                modTypeHint.textContent = 'Filters rows containing [GlyGly(k)] in the specified column for ubiquitinome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
             }
         }
 
@@ -448,6 +509,8 @@
 
             const fileInput = document.getElementById('file-upload');
             const modType = document.getElementById('modification-type').value;
+            const modPattern = modType === 'Proteome' ? '' : getModificationPattern();
+            const modPatterns = modType === 'Proteome' ? [] : getModificationPatterns(modType, modPattern);
             const modColIndex = modType === 'Proteome'
                 ? -1
                 : parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
@@ -466,6 +529,10 @@
                 showError("Invalid unique ID column.");
                 return;
             }
+            if (modType !== 'Proteome' && !modPattern) {
+                showError("Modification text cannot be empty.");
+                return;
+            }
 
             const file = fileInput.files[0];
             if (!file) return;
@@ -478,7 +545,7 @@
                 groupCounts: [],
                 specificitySample: [],
                 config: {
-                    modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
+                    modType, modPattern, modPatterns, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
                 groups: [],
@@ -629,10 +696,17 @@
         function processText(file) {
             let rowCount = 0;
             const fileSize = file.size;
+            const lowerName = file.name.toLowerCase();
+            const parserConfig = {};
+            if (lowerName.endsWith('.tsv') || lowerName.endsWith('.txt')) {
+                parserConfig.delimiter = '\t';
+                parserConfig.fastMode = true;
+            }
             
             updateProgress(0, "Initializing stream...");
             
             Papa.parse(file, {
+                ...parserConfig,
                 worker: true,
                 chunkSize: 1024 * 1024 * 5, // 5MB chunks
                 chunk: function(results, parser) {
@@ -690,7 +764,7 @@
                     showLoading(false);
                 },
                 skipEmptyLines: true,
-                dynamicTyping: true 
+                dynamicTyping: false
             });
         }
 
@@ -833,7 +907,7 @@
                 if (!isValidKey(modVal)) return;
                 const key = String(modVal).trim();
                 addPresence(ctx.allPeptidePresence, key, row, ctx.dataColIndices, ctx.groups);
-                if (!String(modVal).includes(cfg.modType)) return;
+                if (!hasModificationPattern(modVal, cfg.modPatterns)) return;
                 if (!ctx.uniqueRowsByKey.has(key)) ctx.uniqueRowsByKey.set(key, row);
                 addPresence(ctx.presence, key, row, ctx.dataColIndices, ctx.groups);
                 addPresence(ctx.modPeptidePresence, key, row, ctx.dataColIndices, ctx.groups);
@@ -957,18 +1031,16 @@
 
             // Update filtered data title and description based on mode
             const modType = analysisContext.config.modType;
+            const modPattern = analysisContext.config.modPattern;
             const titleEl = document.getElementById('filtered-data-title');
             const descEl = document.getElementById('filtered-data-desc');
 
             if (modType === 'Proteome') {
                 titleEl.textContent = 'Filtered Data (Proteome)';
                 descEl.textContent = 'Deduplicated proteins with at least one non-NA/non-NaN/non-empty/non-NULL valid value';
-            } else if (modType === '[Acetyl (K)]') {
-                titleEl.textContent = 'Filtered Data (Acetylated)';
-                descEl.textContent = 'Deduplicated modified peptides containing [Acetyl (K)]';
             } else {
-                titleEl.textContent = 'Filtered Data (Ubiquitinated)';
-                descEl.textContent = 'Deduplicated modified peptides containing [GlyGly (K)]';
+                titleEl.textContent = `Filtered Data (${getModificationLabel(modPattern)})`;
+                descEl.textContent = `Deduplicated modified peptides containing ${modPattern}`;
             }
 
             document.getElementById('specificity-row').style.display = modType === 'Proteome' ? 'none' : 'flex';
@@ -1365,6 +1437,7 @@
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('error-message').style.display = 'none';
             document.getElementById('analysis-form').reset();
+            toggleProteMode();
             readyData = {};
             analysisContext = {};
             
