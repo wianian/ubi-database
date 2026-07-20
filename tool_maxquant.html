@@ -14,6 +14,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js DataLabels plugin for bar annotations -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- jsPDF for downloadable chart PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -68,7 +70,7 @@
         <div class="content-section" style="display: block;">
             <div class="data-window">
                 <div class="window-header">Statistical Identification Quantity</div>
-                <div class="window-content" style="padding: 40px;">
+                <div class="window-content" style="padding: 24px;">
                     <div class="tool-container">
                         <div class="tool-form">
                             <h3><i class="fas fa-file-upload"></i> Upload & Configure</h3>
@@ -149,6 +151,7 @@
                                             <h4 style="margin: 0; border: none;">Sample Identification Count</h4>
                                             <div style="display: flex; gap: 10px;">
                                                 <button class="download-btn" id="download-sample-png" style="padding: 6px 12px; font-size: 0.85rem; background-color: #007bff;"><i class="fas fa-image"></i> Download PNG</button>
+                                                <button class="download-btn" id="download-sample-pdf" style="padding: 6px 12px; font-size: 0.85rem; background-color: #6f42c1;"><i class="fas fa-file-pdf"></i> Download PDF</button>
                                                 <button class="download-btn" id="download-sample" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
                                             </div>
                                         </div>
@@ -165,11 +168,29 @@
                                             <h4 style="margin: 0; border: none;">Group Identification Count</h4>
                                             <div style="display: flex; gap: 10px;">
                                                 <button class="download-btn" id="download-group-png" style="padding: 6px 12px; font-size: 0.85rem; background-color: #007bff;"><i class="fas fa-image"></i> Download PNG</button>
+                                                <button class="download-btn" id="download-group-pdf" style="padding: 6px 12px; font-size: 0.85rem; background-color: #6f42c1;"><i class="fas fa-file-pdf"></i> Download PDF</button>
                                                 <button class="download-btn" id="download-group" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
                                             </div>
                                         </div>
                                         <div class="canvas-container">
                                             <canvas id="group-chart"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Row 3: Modification Peptide Specificity -->
+                                <div class="chart-row" id="specificity-row">
+                                    <div class="chart-wrapper">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                                            <h4 style="margin: 0; border: none;">Modification Peptide Specificity</h4>
+                                            <div style="display: flex; gap: 10px;">
+                                                <button class="download-btn" id="download-specificity-png" style="padding: 6px 12px; font-size: 0.85rem; background-color: #007bff;"><i class="fas fa-image"></i> Download PNG</button>
+                                                <button class="download-btn" id="download-specificity-pdf" style="padding: 6px 12px; font-size: 0.85rem; background-color: #6f42c1;"><i class="fas fa-file-pdf"></i> Download PDF</button>
+                                                <button class="download-btn" id="download-specificity" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fas fa-download"></i> Download CSV</button>
+                                            </div>
+                                        </div>
+                                        <div class="canvas-container">
+                                            <canvas id="specificity-chart"></canvas>
                                         </div>
                                     </div>
                                 </div>
@@ -196,8 +217,9 @@
     </div>
     
     <style>
-        .tool-container { width: 90%; min-width: 1000px; margin: 0 auto; text-align: left; }
-        .tool-form, .tool-results { background: #f9f9f9; padding: 30px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; }
+        .main-container { max-width: 1480px; padding: 28px 24px; }
+        .tool-container { width: 96%; max-width: 1440px; min-width: 0; margin: 0 auto; text-align: left; }
+        .tool-form, .tool-results { background: #f9f9f9; padding: 22px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; }
         .tool-form h3, .tool-results h3 { margin-top: 0; margin-bottom: 25px; color: #003366; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; }
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
@@ -276,12 +298,17 @@
 
         .chart-wrapper {
             background: white;
-            padding: 20px;
+            padding: 16px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border: 1px solid #eee;
             flex: 1; /* Take full width */
             min-width: 0; /* Prevent flex overflow */
+            overflow: hidden;
+        }
+
+        .chart-row {
+            padding-inline: 4px;
         }
         
         /* Removed .chart-actions styles */
@@ -291,12 +318,30 @@
             color: #003366;
         }
 
+        .chart-wrapper > div:first-child {
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chart-wrapper > div:first-child > div {
+            flex-wrap: wrap;
+        }
+
         .canvas-container {
             position: relative;
             /* Auto-height: scales with data count for optimal bar proportions */
             min-height: 350px;
             width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding-bottom: 10px;
+            scrollbar-gutter: stable;
             /* Dynamic height will be set by JS based on category count */
+        }
+
+        .canvas-container canvas {
+            display: block;
+            max-width: none;
         }
 
         .download-btn {
@@ -355,26 +400,34 @@
             const modHint = document.getElementById('mod-column-hint');
             const modTypeHint = document.getElementById('mod-type-hint');
             const modInput = document.getElementById('mod-column-index');
+            const uniqueGroup = document.getElementById('unique-id-group');
+            const uniqueInput = document.getElementById('unique-id-column-index');
 
             if (modType === 'Proteome') {
                 // Proteome mode: hide modification column
                 modGroup.style.display = 'none';
                 modInput.removeAttribute('required');
-                modTypeHint.textContent = 'Select Proteome for whole proteome identification counting. No modification filtering is applied.';
+                uniqueGroup.style.display = 'block';
+                uniqueInput.setAttribute('required', '');
+                modTypeHint.textContent = 'Select Proteome for whole proteome identification counting. Counts are deduplicated by the selected unique protein ID column after removing NA/NaN/empty/NULL values.';
             } else if (modType === '[Acetyl (K)]') {
                 // Acetylation mode: show modification column
                 modGroup.style.display = 'block';
                 modInput.setAttribute('required', '');
+                uniqueGroup.style.display = 'none';
+                uniqueInput.removeAttribute('required');
                 modLabel.textContent = 'Modification Column Number';
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
-                modTypeHint.textContent = 'Filters rows containing [Acetyl (K)] in the specified column for acetylome analysis. Counts non-NaN/NA values per sample column.';
+                modTypeHint.textContent = 'Filters rows containing [Acetyl (K)] in the specified column for acetylome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
             } else {
                 // Ubiquitination mode: show modification column
                 modGroup.style.display = 'block';
                 modInput.setAttribute('required', '');
+                uniqueGroup.style.display = 'none';
+                uniqueInput.removeAttribute('required');
                 modLabel.textContent = 'Modification Column Number';
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
-                modTypeHint.textContent = 'Filters rows containing [GlyGly (K)] in the specified column for ubiquitinome analysis. Counts non-NaN/NA values per sample column.';
+                modTypeHint.textContent = 'Filters rows containing [GlyGly (K)] in the specified column for ubiquitinome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
             }
         }
 
@@ -398,12 +451,19 @@
             const modColIndex = modType === 'Proteome'
                 ? -1
                 : parseInt(document.getElementById('mod-column-index').value) - 1; // 0-based
+            const uniqueIdColIndex = modType === 'Proteome'
+                ? parseInt(document.getElementById('unique-id-column-index').value) - 1
+                : modColIndex;
             const repCount = parseInt(document.getElementById('rep-count').value);
             const colStart = parseInt(document.getElementById('col-start').value) - 1; // 0-based
             const colEnd = parseInt(document.getElementById('col-end').value); // 1-based end
 
             if (colStart < 0 || colEnd <= colStart) {
                 showError("Invalid column range.");
+                return;
+            }
+            if (modType === 'Proteome' && uniqueIdColIndex < 0) {
+                showError("Invalid unique ID column.");
                 return;
             }
 
@@ -416,8 +476,9 @@
                 filteredRows: [],
                 sampleCounts: [],
                 groupCounts: [],
+                specificitySample: [],
                 config: {
-                    modType, modColIndex, repCount, colStart, colEnd
+                    modType, modColIndex, uniqueIdColIndex, repCount, colStart, colEnd
                 },
                 dataColIndices: [],
                 groups: [],
@@ -645,6 +706,53 @@
             return false;
         }
 
+        function isValidKey(value) {
+            if (value === undefined || value === null) return false;
+            const str = String(value).trim();
+            if (!str) return false;
+            const upper = str.toUpperCase();
+            return !(upper === "NAN" || upper === "NA" || upper === "NULL" || upper === "NONE");
+        }
+
+        function makePresenceStore(sampleCount, groupCount) {
+            return {
+                total: new Set(),
+                samples: Array.from({ length: sampleCount }, () => new Set()),
+                groups: Array.from({ length: groupCount }, () => new Set())
+            };
+        }
+
+        function addPresence(store, key, row, dataColIndices, groups) {
+            let any = false;
+            dataColIndices.forEach((colIdx, i) => {
+                if (isValidValue(row[colIdx])) {
+                    store.samples[i].add(key);
+                    any = true;
+                }
+            });
+            groups.forEach((group, gIdx) => {
+                for (const colIdx of group.cols) {
+                    if (isValidValue(row[colIdx])) {
+                        store.groups[gIdx].add(key);
+                        break;
+                    }
+                }
+            });
+            if (any) store.total.add(key);
+        }
+
+        function countsFromPresence(store) {
+            return {
+                total: store.total.size,
+                samples: store.samples.map(s => s.size),
+                groups: store.groups.map(s => s.size)
+            };
+        }
+
+        function ratio(numerator, denominator) {
+            return denominator > 0 ? numerator / denominator : null;
+        }
+
         function processRow(row, rowIndex) {
             const ctx = analysisContext;
             const cfg = ctx.config;
@@ -659,6 +767,9 @@
                 // Only validate modColIndex for Ubiquitination mode
                 if (!isProteomeMode && cfg.modColIndex >= row.length) {
                     throw new Error(`Modification column index (${cfg.modColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
+                }
+                if (isProteomeMode && cfg.uniqueIdColIndex >= row.length) {
+                    throw new Error(`Unique ID column index (${cfg.uniqueIdColIndex + 1}) is out of bounds. File has ${row.length} columns.`);
                 }
                 if (cfg.colEnd > row.length) {
                     throw new Error(`Data column end index (${cfg.colEnd}) is out of bounds. File has ${row.length} columns.`);
@@ -688,41 +799,20 @@
                      ctx.warning = warningMsg;
                 }
 
-                // Initialize counting structures
-                if (isProteomeMode) {
-                    // Proteome mode: simple counters (each row = one protein, no duplicates expected)
-                    ctx.sampleCounts = new Array(ctx.dataColIndices.length).fill(0);
-                    ctx.groupCounts = [];
-                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                    for (let g = 0; g < numGroups; g++) {
-                        ctx.groupCounts.push(0);
-                    }
-                    ctx.totalCount = 0;
+                const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
+                ctx.groups = [];
+                for (let g = 0; g < numGroups; g++) {
+                    const start = g * cfg.repCount;
+                    const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
+                    const name = row[groupCols[0]] || `Group ${g+1}`;
+                    ctx.groups.push({ cols: groupCols, name: name });
+                }
 
-                    // Define Groups
-                    ctx.groups = [];
-                    for (let g = 0; g < numGroups; g++) {
-                        const start = g * cfg.repCount;
-                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                        const name = row[groupCols[0]] || `Group ${g+1}`;
-                        ctx.groups.push({ cols: groupCols, name: name });
-                    }
-                } else {
-                    // Modification mode (Ubiquitination / Acetylation / future PTM types):
-                    // Rows are collected in ctx.filteredRows during processRow.
-                    // Deduplication and counting are done in finishAnalysis.
-                    // ctx.modDataRows holds filtered (not yet deduplicated) rows.
-                    ctx.modDataRows = []; // will accumulate filtered data rows
-
-                    // Define Groups (used in finishAnalysis)
-                    const numGroups = Math.ceil(ctx.dataColIndices.length / cfg.repCount);
-                    ctx.groups = [];
-                    for (let g = 0; g < numGroups; g++) {
-                        const start = g * cfg.repCount;
-                        const groupCols = ctx.dataColIndices.slice(start, start + cfg.repCount);
-                        const name = row[groupCols[0]] || `Group ${g+1}`;
-                        ctx.groups.push({ cols: groupCols, name: name });
-                    }
+                ctx.uniqueRowsByKey = new Map();
+                ctx.presence = makePresenceStore(ctx.dataColIndices.length, ctx.groups.length);
+                if (!isProteomeMode) {
+                    ctx.allPeptidePresence = makePresenceStore(ctx.dataColIndices.length, ctx.groups.length);
+                    ctx.modPeptidePresence = makePresenceStore(ctx.dataColIndices.length, ctx.groups.length);
                 }
 
                 ctx.filteredRows.push(row);
@@ -732,53 +822,21 @@
             // Step 2: Handle Data Rows
             if (!ctx.header) return;
 
-            // Filtering for modification modes (Ubiquitination / Acetylation / future PTM types)
-            if (!isProteomeMode) {
-                const modVal = row[cfg.modColIndex] ? String(row[cfg.modColIndex]) : "";
-                if (!modVal.includes(cfg.modType)) return;
-            }
-
             if (isProteomeMode) {
-                // Proteome: collect rows for download and count on the fly
-                ctx.filteredRows.push(row);
-                // ========================================
-                // PROTEOME MODE: Each row = one unique protein
-                // If any sample has a valid value (non-0, non-NA, non-NaN) -> identified in that sample
-                // ========================================
-
-                let identifiedInAny = false;
-
-                // Per-sample counting: if this sample column has a valid value -> +1 for this protein in this sample
-                ctx.dataColIndices.forEach((colIdx, i) => {
-                    const cell = row[colIdx];
-                    if (isValidValue(cell)) {
-                        ctx.sampleCounts[i]++;
-                        identifiedInAny = true;
-                    }
-                });
-
-                // Group counting: if any sample in the group has a valid value -> +1 for this protein in this group
-                ctx.groups.forEach((group, gIdx) => {
-                    for (let colIdx of group.cols) {
-                        const cell = row[colIdx];
-                        if (isValidValue(cell)) {
-                            ctx.groupCounts[gIdx]++;
-                            break; // Only count once per group
-                        }
-                    }
-                });
-
-                // Total: if identified in any sample -> +1
-                if (identifiedInAny) {
-                    ctx.totalCount++;
-                }
-
+                const keyValue = row[cfg.uniqueIdColIndex];
+                if (!isValidKey(keyValue)) return;
+                const key = String(keyValue).trim();
+                if (!ctx.uniqueRowsByKey.has(key)) ctx.uniqueRowsByKey.set(key, row);
+                addPresence(ctx.presence, key, row, ctx.dataColIndices, ctx.groups);
             } else {
-                // ========================================
-                // MODIFICATION MODE (Ubiquitination / Acetylation / future PTM types):
-                // Collect filtered rows here; deduplication and counting happen in finishAnalysis.
-                // ========================================
-                ctx.modDataRows.push(row);
+                const modVal = row[cfg.modColIndex];
+                if (!isValidKey(modVal)) return;
+                const key = String(modVal).trim();
+                addPresence(ctx.allPeptidePresence, key, row, ctx.dataColIndices, ctx.groups);
+                if (!String(modVal).includes(cfg.modType)) return;
+                if (!ctx.uniqueRowsByKey.has(key)) ctx.uniqueRowsByKey.set(key, row);
+                addPresence(ctx.presence, key, row, ctx.dataColIndices, ctx.groups);
+                addPresence(ctx.modPeptidePresence, key, row, ctx.dataColIndices, ctx.groups);
             }
         }
 
@@ -788,105 +846,69 @@
             const header = ctx.header;
             const isProteomeMode = (cfg.modType === 'Proteome');
 
-            // Step 1: Calculate Statistics
             updateProgress(95, "Calculating Statistics...");
 
             setTimeout(() => {
+                updateProgress(95, "Deduplicating and calculating statistics...");
+
+                const dedupRows = Array.from(ctx.uniqueRowsByKey.values());
+                ctx.filteredRows = [header, ...dedupRows];
+
+                const presenceCounts = countsFromPresence(ctx.presence);
+                ctx.sampleCounts = presenceCounts.samples;
+                ctx.groupCounts = presenceCounts.groups;
+                ctx.totalCount = presenceCounts.total;
+
                 if (!isProteomeMode) {
-                    // ============================================================
-                    // MODIFICATION MODE: Deduplicate by modColIndex value, then count
-                    //
-                    // Algorithm:
-                    //   1. Deduplicate rows by the value in modColIndex column
-                    //      (keep the first occurrence of each unique mod-site key)
-                    //   2. Build a matrix: deduplicated rows × data columns
-                    //   3. Sample count: for each sample column, count rows where
-                    //      the cell has a valid (non-NaN, non-NA, >0) value
-                    //   4. Group count: for each group (N biological replicates),
-                    //      count rows where AT LEAST ONE replicate column has a
-                    //      valid value (i.e. the row is NOT all-NaN in this group)
-                    //   5. Total count: rows where at least one sample has a valid value
-                    // ============================================================
-
-                    updateProgress(95, "Deduplicating modification sites...");
-
-                    // Step 1: Deduplicate by modColIndex value
-                    const seenKeys = new Set();
-                    const dedupRows = [];
-                    for (const row of ctx.modDataRows) {
-                        const key = row[cfg.modColIndex] !== undefined && row[cfg.modColIndex] !== null
-                            ? String(row[cfg.modColIndex])
-                            : "__empty__";
-                        if (!seenKeys.has(key)) {
-                            seenKeys.add(key);
-                            dedupRows.push(row);
-                        }
-                    }
-
-                    // Update filteredRows to deduplicated set (for download)
-                    // Keep header (first entry already added) then append dedup rows
-                    ctx.filteredRows = [header, ...dedupRows];
-
-                    // Step 2 & 3: Count per sample column
-                    const numSamples = ctx.dataColIndices.length;
-                    ctx.sampleCounts = new Array(numSamples).fill(0);
-                    ctx.groupCounts = new Array(ctx.groups.length).fill(0);
-                    ctx.totalCount = 0;
-
-                    for (const row of dedupRows) {
-                        let identifiedInAny = false;
-
-                        // Per-sample: count valid cells
-                        ctx.dataColIndices.forEach((colIdx, i) => {
-                            if (isValidValue(row[colIdx])) {
-                                ctx.sampleCounts[i]++;
-                                identifiedInAny = true;
-                            }
-                        });
-
-                        // Per-group: count row if at least one replicate has a valid value
-                        ctx.groups.forEach((group, gIdx) => {
-                            for (const colIdx of group.cols) {
-                                if (isValidValue(row[colIdx])) {
-                                    ctx.groupCounts[gIdx]++;
-                                    break; // Only count this row once per group
-                                }
-                            }
-                        });
-
-                        // Total: any sample identified
-                        if (identifiedInAny) ctx.totalCount++;
-                    }
+                    const allCounts = countsFromPresence(ctx.allPeptidePresence);
+                    const modCounts = countsFromPresence(ctx.modPeptidePresence);
+                    ctx.specificitySample = modCounts.samples.map((n, i) => ratio(n, allCounts.samples[i]));
+                    ctx.specificityTotal = ratio(modCounts.total, allCounts.total);
+                    ctx.specificityCounts = { all: allCounts, mod: modCounts };
+                } else {
+                    ctx.specificitySample = [];
+                    ctx.specificityTotal = null;
+                    ctx.specificityCounts = null;
                 }
-                // Proteome mode: ctx.sampleCounts / groupCounts / totalCount already filled by processRow
 
-                // Prepare Sample Stats Data (Array of Arrays)
                 const sampleStats = [["Sample", "Identification_Count"]];
-
-                // Add Total Row
                 sampleStats.push(["Total", ctx.totalCount]);
-
                 ctx.dataColIndices.forEach((colIdx, i) => {
-                    const colName = header[colIdx];
-                    sampleStats.push([colName, ctx.sampleCounts[i]]);
+                    sampleStats.push([header[colIdx], ctx.sampleCounts[i]]);
                 });
 
-                // Prepare Group Stats Data (Array of Arrays)
                 const groupStats = [["Group", "Columns", "Identification_Count"]];
-
-                // Add Total Row
                 groupStats.push(["Total", "All Columns", ctx.totalCount]);
-
                 ctx.groups.forEach((group, i) => {
                     const groupColNames = group.cols.map(idx => header[idx]).join(", ");
                     groupStats.push([group.name, groupColNames, ctx.groupCounts[i]]);
                 });
 
-                // Store raw data for lazy generation
+                const specificityStats = [["Scope", "Name", "Target_Modified_Peptide_Count", "All_Peptide_Count", "Specificity"]];
+                if (!isProteomeMode && ctx.specificityCounts) {
+                    specificityStats.push([
+                        "Total",
+                        "All Columns",
+                        ctx.specificityCounts.mod.total,
+                        ctx.specificityCounts.all.total,
+                        ctx.specificityTotal
+                    ]);
+                    ctx.dataColIndices.forEach((colIdx, i) => {
+                        specificityStats.push([
+                            "Sample",
+                            header[colIdx],
+                            ctx.specificityCounts.mod.samples[i],
+                            ctx.specificityCounts.all.samples[i],
+                            ctx.specificitySample[i]
+                        ]);
+                    });
+                }
+
                 readyData = {
                     ubi: ctx.filteredRows,
                     sample: sampleStats,
                     group: groupStats,
+                    specificity: specificityStats,
                     baseName: fileName.split('.')[0]
                 };
 
@@ -897,7 +919,6 @@
                 }, 500);
             }, 50);
         }
-
         function showLoading(show) {
             document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
             if (show) {
@@ -928,7 +949,7 @@
             document.getElementById('loading-overlay').style.display = 'none';
         }
         
-        let charts = { sample: null, group: null };
+        let charts = { sample: null, group: null, specificity: null };
 
         function showResults() {
             document.querySelector('.tool-form').style.display = 'none';
@@ -941,14 +962,16 @@
 
             if (modType === 'Proteome') {
                 titleEl.textContent = 'Filtered Data (Proteome)';
-                descEl.textContent = 'All rows from result file (whole proteome analysis)';
+                descEl.textContent = 'Deduplicated proteins with at least one non-NA/non-NaN/non-empty/non-NULL valid value';
             } else if (modType === '[Acetyl (K)]') {
                 titleEl.textContent = 'Filtered Data (Acetylated)';
-                descEl.textContent = 'Rows containing [Acetyl (K)] in the specified column';
+                descEl.textContent = 'Deduplicated modified peptides containing [Acetyl (K)]';
             } else {
                 titleEl.textContent = 'Filtered Data (Ubiquitinated)';
-                descEl.textContent = 'Rows containing [GlyGly (K)] in the specified column';
+                descEl.textContent = 'Deduplicated modified peptides containing [GlyGly (K)]';
             }
+
+            document.getElementById('specificity-row').style.display = modType === 'Proteome' ? 'none' : 'flex';
             
             // Show Warning if exists
             const warningContainer = document.getElementById('warning-container');
@@ -970,86 +993,140 @@
         function renderCharts() {
             const ctx = analysisContext;
             const header = ctx.header;
+            const isProteomeMode = (ctx.config.modType === 'Proteome');
 
-            // Destroy existing charts
             if (charts.sample) { charts.sample.destroy(); charts.sample = null; }
             if (charts.group) { charts.group.destroy(); charts.group = null; }
+            if (charts.specificity) { charts.specificity.destroy(); charts.specificity = null; }
 
-            // --- Auto-sizing helpers ---
-            const numSamples = ctx.dataColIndices.length;
-            const numGroups  = ctx.groups.length;
+            const palColors = ['#72A6DE', '#E57374', '#81C784'];
+            const palExtend = ['#FFB74D', '#BA68C8', '#4DB6AC', '#A1887F', '#90A4AE',
+                               '#FFF176', '#CE93D8', '#80DEEA', '#F48FB1', '#A5D6A7'];
+            const palette = [...palColors, ...palExtend];
+            const totalColor = '#B8C0C7';
 
-            // Bar width: adaptive to data count
-            // Few bars → wide & prominent (0.6-0.75)
-            // Many bars → slim but visible (0.5-0.7)
-            function autoBarWidth(count) {
-                if (count <= 3)   return 0.65;
-                if (count <= 8)   return 0.60;
-                if (count <= 15)  return 0.55;
-                if (count <= 30)  return 0.50;
-                if (count <= 60)  return 0.45;
-                return 0.38;      // 60+ samples
+            function hexToRgb(hex) {
+                const clean = hex.replace('#', '');
+                return {
+                    r: parseInt(clean.slice(0, 2), 16),
+                    g: parseInt(clean.slice(2, 4), 16),
+                    b: parseInt(clean.slice(4, 6), 16)
+                };
             }
 
-            // Font size: adaptive
+            function rgbToHex({ r, g, b }) {
+                return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+            }
+
+            function mixColor(hex, targetHex, amount) {
+                const base = hexToRgb(hex);
+                const target = hexToRgb(targetHex);
+                return rgbToHex({
+                    r: base.r + (target.r - base.r) * amount,
+                    g: base.g + (target.g - base.g) * amount,
+                    b: base.b + (target.b - base.b) * amount
+                });
+            }
+
+            function replicateShade(baseColor, repIndex, repCount) {
+                if (repCount <= 1) return baseColor;
+                const lightest = 0.62;
+                const darkest = 0.04;
+                const amount = lightest - (lightest - darkest) * (repIndex / (repCount - 1));
+                return mixColor(baseColor, '#FFFFFF', amount);
+            }
+
+            function buildColumnColorMap() {
+                const map = new Map();
+                ctx.groups.forEach((group, groupIndex) => {
+                    const base = palette[groupIndex % palette.length];
+                    group.cols.forEach((colIdx, repIndex) => {
+                        map.set(colIdx, replicateShade(base, repIndex, group.cols.length));
+                    });
+                });
+                return map;
+            }
+
+            function sampleColors() {
+                const byColumn = buildColumnColorMap();
+                return [totalColor, ...ctx.dataColIndices.map(colIdx => byColumn.get(colIdx) || palette[0])];
+            }
+
+            function groupColors() {
+                return [totalColor, ...ctx.groups.map((_, i) => palette[i % palette.length])];
+            }
+
+            function specificityColors() {
+                const byColumn = buildColumnColorMap();
+                const samplePart = ctx.dataColIndices.map(colIdx => byColumn.get(colIdx) || palette[0]);
+                return [totalColor, ...samplePart];
+            }
+
             function autoFontSize(count, base) {
-                if (count <= 5)   return base + 2;
-                if (count <= 15)  return base;
-                if (count <= 40)  return Math.max(base - 1, 8);
+                if (count <= 5) return base + 1;
+                if (count <= 15) return base;
+                if (count <= 40) return Math.max(base - 1, 8);
                 return Math.max(base - 2, 7);
             }
 
-            // Label rotation: adaptive
-            function autoLabelRotation(count) {
-                if (count <= 6)   return 0;
-                if (count <= 12)  return 30;
-                if (count <= 25)  return 45;
-                return 60;
+            function requiredCanvasWidth(labels, data, isRatio = false) {
+                const longestLabel = labels.reduce((max, label) => Math.max(max, String(label).length), 0);
+                const longestValue = data.reduce((max, value) => {
+                    if (value === null || value === undefined || Number.isNaN(value)) return max;
+                    const text = isRatio ? Number(value).toFixed(3) : Number(value).toLocaleString();
+                    return Math.max(max, text.length);
+                }, 0);
+                const labelSpace = Math.min(900, Math.max(220, longestLabel * 7.2));
+                const valueSpace = Math.min(180, Math.max(80, longestValue * 9));
+                return Math.ceil(Math.max(900, labelSpace + 620 + valueSpace));
             }
 
-            // CNS color palette (from R code)
-            const CNS_BLUE     = '#2166AC';
-            const CNS_NAVY     = '#1B7837';
-            const CNS_DARKBLUE = '#053061';
+            function setCanvasSize(canvasId, labels, data, isRatio = false) {
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const height = Math.max(340, Math.min(1200, 120 + labels.length * 34));
+                const width = requiredCanvasWidth(labels, data, isRatio);
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                canvas.width = width;
+                canvas.height = height;
+            }
 
-            // Common CNS theme for Chart.js
-            function cnsScaleConfig(yTitle) {
+            function horizontalScaleConfig(xTitle, categoryCount, isRatio = false) {
                 return {
-                    y: {
+                    x: {
                         beginAtZero: true,
+                        max: isRatio ? 1 : undefined,
                         title: {
                             display: true,
-                            text: yTitle || 'Count',
-                            font: { size: 12, weight: 'bold', family: 'Arial, sans-serif' },
-                            padding: { top: 4, bottom: 8 }
+                            text: xTitle,
+                            font: { size: 12, weight: 'bold', family: 'Arial, sans-serif' }
                         },
                         ticks: {
                             font: { size: 11, family: 'Arial, sans-serif' },
-                            padding: 4,
-                            color: '#333'
+                            color: '#333',
+                            callback: value => isRatio ? Number(value).toFixed(2) : Number(value).toLocaleString()
                         },
                         border: { display: true, color: '#666', width: 1 },
-                        grid: { display: false }          // No grid lines (CNS style)
+                        grid: { display: false }
                     },
-                    x: {
+                    y: {
                         ticks: {
-                            font: {
-                                size: autoFontSize(numSamples, 11),
-                                family: 'Arial, sans-serif'
-                            },
-                            maxRotation: autoLabelRotation(numSamples),
-                            minRotation: 0,
+                            font: { size: autoFontSize(categoryCount, 11), family: 'Arial, sans-serif' },
                             autoSkip: false,
-                            padding: 4,
                             color: '#333'
                         },
+                        afterFit: axis => {
+                            const longestLabel = axis.chart.data.labels.reduce((max, label) => Math.max(max, String(label).length), 0);
+                            axis.width = Math.min(900, Math.max(axis.width, longestLabel * 7.2 + 28));
+                        },
                         border: { display: true, color: '#666', width: 1 },
-                        grid: { display: false }           // No grid lines (CNS style)
+                        grid: { display: false }
                     }
                 };
             }
 
-            function cnsPluginConfig(titleText) {
+            function pluginConfig(titleText, categoryCount, isRatio = false) {
                 return {
                     legend: { display: false },
                     title: {
@@ -1061,107 +1138,75 @@
                     },
                     datalabels: {
                         anchor: 'end',
-                        align: 'top',
-                        offset: 2,
-                        font: {
-                            size: autoFontSize(numSamples, 10),
-                            weight: 'bold',
-                            family: 'Arial, sans-serif'
-                        },
+                        align: 'right',
+                        offset: 3,
+                        clamp: false,
+                        clip: false,
+                        font: { size: autoFontSize(categoryCount, 10), weight: 'bold', family: 'Arial, sans-serif' },
                         color: '#333',
-                        formatter: function(value) {
-                            if (value === 0) return '';
-                            return value >= 10000 ? (value / 1000).toFixed(1) + 'k' : value.toLocaleString();
+                        formatter: value => {
+                            if (value === null || value === undefined || Number.isNaN(value) || value === 0) return '';
+                            return isRatio ? Number(value).toFixed(3) : Number(value).toLocaleString();
                         }
                     }
                 };
             }
 
-            // Register DataLabels plugin globally
             Chart.register(ChartDataLabels);
 
-            // --- Dynamic canvas height for optimal proportions ---
-            function setCanvasHeight(canvasId, categoryCount) {
-                const el = document.getElementById(canvasId);
-                if (!el) return;
-                // Base height + per-category padding
-                // Few categories: compact (350-450px)
-                // Many categories: taller to keep bars readable (up to 70vh)
-                let h;
-                if (categoryCount <= 4)   h = 380;
-                else if (categoryCount <= 8)  h = 420;
-                else if (categoryCount <= 15) h = 480;
-                else if (categoryCount <= 30) h = 550;
-                else if (categoryCount <= 60) h = Math.min(window.innerHeight * 0.65, 650);
-                else h = Math.min(window.innerHeight * 0.72, 750);
-                el.style.height = h + 'px';
+            function drawHorizontalBar(canvasId, labels, data, colors, title, xTitle, isRatio = false) {
+                setCanvasSize(canvasId, labels, data, isRatio);
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return null;
+                return new Chart(canvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: xTitle,
+                            data,
+                            backgroundColor: colors,
+                            borderColor: 'white',
+                            borderWidth: 1.2,
+                            barPercentage: 0.72,
+                            categoryPercentage: 0.82
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: false,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        scales: horizontalScaleConfig(xTitle, labels.length, isRatio),
+                        plugins: pluginConfig(title, labels.length, isRatio),
+                        layout: { padding: { right: 90 } }
+                    }
+                });
             }
-            setCanvasHeight('sample-chart', numSamples + 1);   // +1 for "Total"
-            setCanvasHeight('group-chart', numGroups + 1);
 
-            // ==============================
-            // Sample Identification Chart
-            // ==============================
-            const sampleLabels = ["Total", ...ctx.dataColIndices.map(i => header[i])];
-            const sampleData   = [ctx.totalCount, ...ctx.sampleCounts];
+            const sampleLabels = ['Total', ...ctx.dataColIndices.map(i => header[i])];
+            const sampleData = [ctx.totalCount, ...ctx.sampleCounts];
+            charts.sample = drawHorizontalBar('sample-chart', sampleLabels, sampleData, sampleColors(), 'Sample Identification Counts', 'Identified Peptides');
 
-            const sampleCtx = document.getElementById('sample-chart').getContext('2d');
-            charts.sample = new Chart(sampleCtx, {
-                type: 'bar',
-                data: {
-                    labels: sampleLabels,
-                    datasets: [{
-                        label: 'Identification Count',
-                        data: sampleData,
-                        backgroundColor: CNS_BLUE,
-                        borderColor: 'white',
-                        borderWidth: 1.2,
-                        barPercentage: autoBarWidth(numSamples + 1), // +1 for "Total"
-                        categoryPercentage: autoBarWidth(numSamples + 1) * 1.05
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: cnsScaleConfig('Identified Peptides'),
-                    plugins: cnsPluginConfig('Sample Identification Counts'),
-                    layout: { padding: { top: 20 } }
-                }
-            });
+            const groupLabels = ['Total', ...ctx.groups.map(g => g.name)];
+            const groupData = [ctx.totalCount, ...ctx.groupCounts];
+            charts.group = drawHorizontalBar('group-chart', groupLabels, groupData, groupColors(), 'Group Identification Counts', 'Identified Peptides');
 
-            // ==============================
-            // Group Identification Chart
-            // ==============================
-            const groupLabels = ["Total", ...ctx.groups.map(g => g.name)];
-            const groupData   = [ctx.totalCount, ...ctx.groupCounts];
-
-            const groupCtx = document.getElementById('group-chart').getContext('2d');
-            charts.group = new Chart(groupCtx, {
-                type: 'bar',
-                data: {
-                    labels: groupLabels,
-                    datasets: [{
-                        label: 'Group Identification Count',
-                        data: groupData,
-                        backgroundColor: CNS_NAVY,
-                        borderColor: 'white',
-                        borderWidth: 1.2,
-                        barPercentage: autoBarWidth(numGroups + 1),
-                        categoryPercentage: autoBarWidth(numGroups + 1) * 1.05
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: cnsScaleConfig('Identified Peptides'),
-                    plugins: cnsPluginConfig('Group Identification Counts'),
-                    layout: { padding: { top: 20 } }
-                }
-            });
+            if (!isProteomeMode) {
+                const specificityLabels = ['Total', ...ctx.dataColIndices.map(i => header[i])];
+                const specificityData = [ctx.specificityTotal, ...ctx.specificitySample];
+                charts.specificity = drawHorizontalBar(
+                    'specificity-chart',
+                    specificityLabels,
+                    specificityData,
+                    specificityColors(),
+                    'Modification Peptide Specificity',
+                    'Target modified peptides / all detected peptides',
+                    true
+                );
+            }
         }
-
-        
-        function downloadFile(type) {
+                function downloadFile(type) {
             if (!readyData[type]) return;
             
             const btn = document.getElementById(`download-${type}`);
@@ -1185,10 +1230,10 @@
                         try {
                             const ws = XLSX.utils.aoa_to_sheet(data, { dense: true });
                             const wb = XLSX.utils.book_new();
-                            const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : "Group Stats");
+                            const sheetName = type === 'ubi' ? "Filtered" : (type === 'sample' ? "Sample Stats" : (type === 'group' ? "Group Stats" : "Specificity"));
                             XLSX.utils.book_append_sheet(wb, ws, sheetName);
                             
-                            const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : '_group_stats.xlsx');
+                            const suffix = type === 'ubi' ? '_filtered.xlsx' : (type === 'sample' ? '_sample_stats.xlsx' : (type === 'group' ? '_group_stats.xlsx' : '_specificity_stats.xlsx'));
                             XLSX.writeFile(wb, readyData.baseName + suffix);
                         } catch (excelErr) {
                             console.warn("Excel generation failed, falling back to CSV", excelErr);
@@ -1256,9 +1301,14 @@
         document.getElementById('download-ubi').addEventListener('click', () => downloadFile('ubi'));
         document.getElementById('download-sample').addEventListener('click', () => downloadFile('sample'));
         document.getElementById('download-group').addEventListener('click', () => downloadFile('group'));
+        document.getElementById('download-specificity').addEventListener('click', () => downloadFile('specificity'));
         
         document.getElementById('download-sample-png').addEventListener('click', () => downloadChartImage('sample-chart', 'Sample_Identification_Count.png'));
         document.getElementById('download-group-png').addEventListener('click', () => downloadChartImage('group-chart', 'Group_Identification_Count.png'));
+        document.getElementById('download-specificity-png').addEventListener('click', () => downloadChartImage('specificity-chart', 'Modification_Peptide_Specificity.png'));
+        document.getElementById('download-sample-pdf').addEventListener('click', () => downloadChartPdf('sample-chart', 'Sample_Identification_Count.pdf'));
+        document.getElementById('download-group-pdf').addEventListener('click', () => downloadChartPdf('group-chart', 'Group_Identification_Count.pdf'));
+        document.getElementById('download-specificity-pdf').addEventListener('click', () => downloadChartPdf('specificity-chart', 'Modification_Peptide_Specificity.pdf'));
 
         function downloadChartImage(canvasId, filename) {
             const canvas = document.getElementById(canvasId);
@@ -1283,6 +1333,32 @@
             }
         }
 
+        function downloadChartPdf(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || !window.jspdf) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+
+            const image = canvas.toDataURL('image/png', 1.0);
+            const orientation = canvas.width >= canvas.height ? 'landscape' : 'portrait';
+            const pdf = new window.jspdf.jsPDF({ orientation, unit: 'pt', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 28;
+            const maxWidth = pageWidth - margin * 2;
+            const maxHeight = pageHeight - margin * 2;
+            const ratio = Math.min(maxWidth / canvas.width, maxHeight / canvas.height);
+            const width = canvas.width * ratio;
+            const height = canvas.height * ratio;
+            pdf.addImage(image, 'PNG', (pageWidth - width) / 2, margin, width, height);
+            pdf.save(filename);
+        }
+
         
         document.getElementById('reset-btn').addEventListener('click', function() {
             document.querySelector('.tool-form').style.display = 'block';
@@ -1295,6 +1371,7 @@
             // Destroy charts
             if (charts.sample) { charts.sample.destroy(); charts.sample = null; }
             if (charts.group) { charts.group.destroy(); charts.group = null; }
+            if (charts.specificity) { charts.specificity.destroy(); charts.specificity = null; }
         });
     </script>
     
