@@ -78,6 +78,7 @@
                                 <div class="form-group">
                                     <label for="file-upload">Upload Result File (.xlsx, .tsv, .txt, .csv)</label>
                                     <input type="file" id="file-upload" name="file" accept=".xlsx, .tsv, .txt, .csv" required>
+                                    <small id="column-detection-status" role="status" aria-live="polite"></small>
                                 </div>
                                 
                                 <div class="form-group">
@@ -203,6 +204,44 @@
                                     </div>
                                 </div>
 
+                                <!-- Sample intensity distribution -->
+                                <div class="chart-row" id="intensity-row">
+                                    <div class="chart-wrapper">
+                                        <div class="qc-card-header">
+                                            <h4>Sample Intensity Boxplot</h4>
+                                            <div class="qc-actions">
+                                                <label for="intensity-scale">Scale:</label>
+                                                <select id="intensity-scale"><option value="raw">Raw intensity</option><option value="log2" selected>log2 intensity</option></select>
+                                                <button class="download-btn" id="download-intensity-png">PNG</button>
+                                                <button class="download-btn" id="download-intensity-pdf">PDF</button>
+                                                <button class="download-btn" id="download-intensity">Summary CSV</button>
+                                                <button class="download-btn" id="download-qc-matrix">Intensity Matrix CSV</button>
+                                            </div>
+                                        </div>
+                                        <p class="qc-description">Uses the same filtered, deduplicated rows as Download Filtered Data. Duplicate IDs retain the first row in input order. Only positive finite intensities are included. Quartiles use linear interpolation (R type 7); whiskers use 1.5 × IQR. log2 scale is the default.</p>
+                                        <div class="qc-canvas-container"><canvas id="intensity-chart" role="img" aria-label="Intensity boxplots for all samples"></canvas></div>
+                                        <p class="qc-hover" id="intensity-hover" aria-live="polite"></p>
+                                    </div>
+                                </div>
+
+                                <!-- Sample correlation -->
+                                <div class="chart-row" id="correlation-row">
+                                    <div class="chart-wrapper">
+                                        <div class="qc-card-header">
+                                            <h4>Sample Correlation Heatmap</h4>
+                                            <div class="qc-actions">
+                                                <button class="download-btn" id="download-correlation-png">PNG</button>
+                                                <button class="download-btn" id="download-correlation-pdf">PDF</button>
+                                                <button class="download-btn" id="download-correlation">Correlation CSV</button>
+                                                <button class="download-btn" id="download-pair-counts">Shared Feature Counts CSV</button>
+                                            </div>
+                                        </div>
+                                        <p class="qc-description" id="correlation-description"></p>
+                                        <div class="qc-canvas-container"><canvas id="correlation-chart" role="img" aria-label="Sample correlation heatmap"></canvas></div>
+                                        <p class="qc-hover" id="correlation-hover" aria-live="polite"></p>
+                                    </div>
+                                </div>
+
                                 <!-- Reset Button -->
                                 <div style="text-align: center; margin-top: 20px;">
                                     <button class="reset-btn" id="reset-btn">Analyze Another File</button>
@@ -225,6 +264,15 @@
     </div>
     
     <style>
+        .qc-card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+        .qc-card-header h4 { margin: 0; border: 0; }
+        .qc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .qc-actions .download-btn { padding: 7px 11px; font-size: 0.85rem; }
+        .qc-actions select { padding: 7px; border: 1px solid #ccc; border-radius: 4px; background: white; }
+        .qc-description { margin: 12px 0; color: #586675; font-size: 0.88rem; line-height: 1.6; }
+        .qc-canvas-container { max-width: 100%; max-height: 850px; overflow: auto; background: white; }
+        .qc-canvas-container canvas { display: block; max-width: none; }
+        .qc-hover { min-height: 44px; margin: 12px 0 0; padding: 10px; background: #f1f5f9; color: #32465c; font-size: 0.85rem; overflow-wrap: anywhere; }
         .main-container { max-width: 1480px; padding: 28px 24px; }
         .tool-container { width: 96%; max-width: 1440px; min-width: 0; margin: 0 auto; text-align: left; }
         .tool-form, .tool-results { background: #f9f9f9; padding: 22px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; }
@@ -400,6 +448,129 @@
     <script>
         let readyData = {};
 
+        // Auto-detect column numbers from the uploaded file's header.
+        let uploadedHeader = null;
+        let headerRequestId = 0;
+        let isReadingHeader = false;
+
+        function clearDetectedColumns() {
+            ['mod-column-index', 'unique-id-column-index', 'col-start', 'col-end']
+                .forEach(id => { document.getElementById(id).value = ''; });
+        }
+
+        function setHeaderStatus(message) {
+            document.getElementById('column-detection-status').textContent = message;
+        }
+
+        function applyDetectedColumns() {
+            if (!uploadedHeader) return;
+            const headers = uploadedHeader.map(value =>
+                String(value == null ? '' : value).replace(/^\uFEFF/, '').trim());
+            const isProteome = document.getElementById('modification-type').value === 'Proteome';
+            const suffix = isProteome ? '.PG.Quantity' : '.PEP.Quantity';
+            let idName = isProteome ? 'PG.ProteinGroups' : 'EG.ModifiedSequence';
+            let idIndex = headers.indexOf(idName);
+            if (isProteome && idIndex === -1) {
+                idName = 'PG.ProteinAccessions';
+                idIndex = headers.indexOf(idName);
+            }
+            clearDetectedColumns();
+            const inputId = isProteome ? 'unique-id-column-index' : 'mod-column-index';
+            document.getElementById(inputId).value = idIndex >= 0 ? idIndex + 1 : '';
+
+            const quantityIndices = [];
+            headers.forEach((name, index) => {
+                if (name.endsWith(suffix)) quantityIndices.push(index + 1);
+            });
+            const messages = [];
+            messages.push(idIndex >= 0
+                ? `${idName}: column ${idIndex + 1}.`
+                : `ID column not found (${isProteome ? 'PG.ProteinGroups / PG.ProteinAccessions' : idName}); enter it manually.`);
+            if (quantityIndices.length) {
+                const start = quantityIndices[0];
+                const end = quantityIndices[quantityIndices.length - 1];
+                document.getElementById('col-start').value = start;
+                document.getElementById('col-end').value = end;
+                messages.push(`${suffix}: columns ${start} - ${end} (${quantityIndices.length} matches).`);
+                if (end - start + 1 !== quantityIndices.length) {
+                    messages.push('Matching quantity columns are not contiguous. This range includes intervening columns; review it before running.');
+                }
+            } else {
+                messages.push(`No columns ending in ${suffix}; enter the range manually.`);
+            }
+            messages.push('Column numbers start at 1. You can edit the detected values.');
+            setHeaderStatus(messages.join(' '));
+        }
+
+        async function readUploadedHeader(file) {
+            const name = file.name.toLowerCase();
+            if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+                const workbook = XLSX.read(await file.arrayBuffer(), {type: 'array', sheetRows: 1});
+                if (!workbook.SheetNames.length) throw new Error('Workbook has no worksheets.');
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1, defval: '', blankrows: true});
+                return rows[0] || [];
+            }
+            if (name.endsWith('.tsv') || name.endsWith('.txt')) {
+                // Match the existing TSV/TXT analysis parser and stop after the header.
+                const reader = file.stream().getReader();
+                const decoder = new TextDecoder();
+                let buffered = '';
+                try {
+                    while (true) {
+                        const {value, done} = await reader.read();
+                        buffered += done ? decoder.decode() : decoder.decode(value, {stream: true});
+                        let newline;
+                        while ((newline = buffered.indexOf('\n')) !== -1) {
+                            const line = buffered.slice(0, newline).replace(/\r$/, '');
+                            buffered = buffered.slice(newline + 1);
+                            if (line.trim()) return line.split('\t');
+                        }
+                        if (done) return buffered.trim() ? buffered.replace(/\r$/, '').split('\t') : [];
+                    }
+                } finally {
+                    await reader.cancel();
+                    reader.releaseLock();
+                }
+            }
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    preview: 1,
+                    chunkSize: 64 * 1024,
+                    skipEmptyLines: true,
+                    dynamicTyping: false,
+                    complete: results => resolve(results.data[0] || []),
+                    error: reject
+                });
+            });
+        }
+
+        document.getElementById('file-upload').addEventListener('change', async function() {
+            const requestId = ++headerRequestId;
+            uploadedHeader = null;
+            clearDetectedColumns();
+            const file = this.files[0];
+            isReadingHeader = Boolean(file);
+            setHeaderStatus(file ? 'Reading file header...' : '');
+            if (!file) return;
+            try {
+                const header = await readUploadedHeader(file);
+                if (requestId !== headerRequestId) return;
+                if (!header.length || !header.some(value => String(value == null ? '' : value).trim())) {
+                    throw new Error('No header row found.');
+                }
+                uploadedHeader = header;
+                applyDetectedColumns();
+            } catch (error) {
+                if (requestId !== headerRequestId) return;
+                setHeaderStatus(`Could not detect columns: ${error.message || error}. Enter the column numbers manually.`);
+            } finally {
+                if (requestId === headerRequestId) isReadingHeader = false;
+            }
+        });
+
+
+
         function getModificationPattern() {
             const modType = document.getElementById('modification-type').value;
             if (modType !== 'Custom') return modType;
@@ -490,6 +661,7 @@
                 modHint.textContent = 'Enter the column number (1-based index) containing modification information';
                 modTypeHint.textContent = 'Filters rows containing [GlyGly(k)] in the specified column for ubiquitinome analysis. Counts are deduplicated by modified peptide after removing NA/NaN/empty/NULL values.';
             }
+            applyDetectedColumns();
         }
 
         // Analysis State Context
@@ -506,6 +678,10 @@
 
         document.getElementById('analysis-form').addEventListener('submit', function(e) {
             e.preventDefault();
+            if (isReadingHeader) {
+                showError('Please wait for file header detection to finish.');
+                return;
+            }
 
             const fileInput = document.getElementById('file-upload');
             const modType = document.getElementById('modification-type').value;
@@ -1021,6 +1197,150 @@
             }
         }
 
+        // Self-contained: also serialized into a Web Worker for large reports.
+        async function calculateSampleQC(columns, method, onProgress = () => {}) {
+            function quantile(sorted, p) {
+                if (!sorted.length) return null;
+                const index = (sorted.length - 1) * p;
+                const low = Math.floor(index);
+                return sorted[low] + (sorted[Math.ceil(index)] - sorted[low]) * (index - low);
+            }
+            function summarize(sorted) {
+                if (!sorted.length) return {n: 0};
+                const q1 = quantile(sorted, 0.25), median = quantile(sorted, 0.5), q3 = quantile(sorted, 0.75);
+                const iqr = q3 - q1, lowFence = q1 - 1.5 * iqr, highFence = q3 + 1.5 * iqr;
+                let low = 0, high = sorted.length - 1;
+                while (sorted[low] < lowFence) low++;
+                while (sorted[high] > highFence) high--;
+                const outlierCount = low + sorted.length - 1 - high;
+                const outliers = [];
+                // Limit drawn points only; quartiles, whiskers, counts and extrema use ALL values.
+                const drawn = Math.min(400, outlierCount);
+                for (let k = 0; k < drawn; k++) {
+                    const j = drawn === 1 ? 0 : Math.round(k * (outlierCount - 1) / (drawn - 1));
+                    outliers.push(j < low ? sorted[j] : sorted[high + 1 + j - low]);
+                }
+                return {n: sorted.length, min: sorted[0], q1, median, q3, max: sorted[sorted.length - 1],
+                    lowerWhisker: sorted[low], upperWhisker: sorted[high], outlierCount, outliers};
+            }
+            function ranks(values) {
+                const order = Array.from({length: values.length}, (_, i) => i).sort((a, b) => values[a] - values[b]);
+                const result = new Float64Array(values.length);
+                for (let start = 0; start < order.length;) {
+                    let end = start + 1;
+                    while (end < order.length && values[order[end]] === values[order[start]]) end++;
+                    const rank = (start + 1 + end) / 2;
+                    for (let k = start; k < end; k++) result[order[k]] = rank;
+                    start = end;
+                }
+                return result;
+            }
+            function pearson(x, y) {
+                let mx = 0, my = 0, xx = 0, yy = 0, xy = 0;
+                for (let k = 0; k < x.length; k++) {
+                    const dx = x[k] - mx, dy = y[k] - my;
+                    mx += dx / (k + 1); my += dy / (k + 1);
+                    xx += dx * (x[k] - mx); yy += dy * (y[k] - my);
+                    xy += dx * (y[k] - my);
+                }
+                if (x.length < 3 || !(xx > 0) || !(yy > 0)) return null;
+                return Math.max(-1, Math.min(1, xy / Math.sqrt(xx) / Math.sqrt(yy)));
+            }
+            const nSamples = columns.length;
+            const raw = [], log2 = [], logs = [], cachedRanks = [];
+            for (let i = 0; i < nSamples; i++) {
+                const valid = Float64Array.from(columns[i]).filter(value => Number.isFinite(value) && value > 0);
+                valid.sort();
+                raw.push(summarize(valid));
+                log2.push(summarize(valid.map(value => Math.log2(value))));
+                const transformed = Float64Array.from(columns[i], value =>
+                    Number.isFinite(value) && value > 0 ? Math.log2(value) : NaN);
+                logs.push(transformed);
+                cachedRanks.push(method === 'Spearman' && valid.length === transformed.length ? ranks(transformed) : null);
+                if (i % 4 === 0) { onProgress(0, 'Summarizing sample intensities...'); await new Promise(resolve => setTimeout(resolve, 0)); }
+            }
+            const correlation = Array.from({length: nSamples}, () => Array(nSamples).fill(null));
+            const pairCounts = Array.from({length: nSamples}, () => Array(nSamples).fill(0));
+            const totalPairs = nSamples * (nSamples + 1) / 2;
+            let completed = 0;
+            for (let i = 0; i < nSamples; i++) {
+                for (let j = i; j < nSamples; j++) {
+                    let x, y;
+                    if (method === 'Spearman' && cachedRanks[i] && cachedRanks[j]) {
+                        x = cachedRanks[i]; y = cachedRanks[j];
+                    } else {
+                        x = []; y = [];
+                        for (let k = 0; k < logs[i].length; k++) {
+                            if (Number.isFinite(logs[i][k]) && Number.isFinite(logs[j][k])) {
+                                x.push(logs[i][k]); y.push(logs[j][k]);
+                            }
+                        }
+                        // Rank AFTER pairwise deletion so missingness does not bias Spearman rho.
+                        if (method === 'Spearman') { x = ranks(x); y = ranks(y); }
+                    }
+                    const count = x.length;
+                    const coefficient = pearson(x, y);
+                    correlation[i][j] = correlation[j][i] = coefficient;
+                    pairCounts[i][j] = pairCounts[j][i] = count;
+                    completed++;
+                    if (completed % 8 === 0 || completed === totalPairs) {
+                        onProgress(completed / totalPairs, `Calculating ${method} correlation (${completed}/${totalPairs} pairs)...`);
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                }
+            }
+            return {raw, log2, correlation, pairCounts, method};
+        }
+
+        let qcWorker = null;
+        let qcRequestId = 0;
+
+        function buildQCColumns(ctx) {
+            const rows = ctx.filteredRows.slice(1);
+            return ctx.dataColIndices.map(index => Float64Array.from(rows, row =>
+                isValidValue(row[index]) ? Number(row[index]) : NaN));
+        }
+
+        function computeSampleQC(ctx) {
+            const method = ctx.config.modType === 'Proteome' ? 'Pearson' : 'Spearman';
+            const report = (fraction, message) => updateProgress(95 + Math.floor(fraction * 4), message);
+            if (typeof Worker === 'undefined') return calculateSampleQC(buildQCColumns(ctx), method, report);
+            return new Promise((resolve, reject) => {
+                let worker, workerUrl;
+                function cleanup() {
+                    if (worker) worker.terminate();
+                    if (workerUrl) URL.revokeObjectURL(workerUrl);
+                    if (qcWorker === worker) qcWorker = null;
+                }
+                function fallback() {
+                    cleanup();
+                    calculateSampleQC(buildQCColumns(ctx), method, report).then(resolve, reject);
+                }
+                try {
+                    const code = `const calculateSampleQC = ${calculateSampleQC.toString()};
+                        self.onmessage = async event => {
+                            try {
+                                const result = await calculateSampleQC(event.data.columns, event.data.method,
+                                    (fraction, message) => self.postMessage({type: 'progress', fraction, message}));
+                                self.postMessage({type: 'result', result});
+                            } catch (error) { self.postMessage({type: 'error', message: error.message}); }
+                        };`;
+                    workerUrl = URL.createObjectURL(new Blob([code], {type: 'application/javascript'}));
+                    worker = new Worker(workerUrl);
+                    qcWorker = worker;
+                    worker.onmessage = event => {
+                        const message = event.data;
+                        if (message.type === 'progress') report(message.fraction, message.message);
+                        else if (message.type === 'result') { cleanup(); resolve(message.result); }
+                        else { cleanup(); reject(new Error(message.message)); }
+                    };
+                    worker.onerror = event => { event.preventDefault(); fallback(); };
+                    const columns = buildQCColumns(ctx);
+                    worker.postMessage({columns, method}, columns.map(column => column.buffer));
+                } catch (error) { fallback(); }
+            });
+        }
+
         function finishAnalysis(fileName) {
             const ctx = analysisContext;
             const cfg = ctx.config;
@@ -1029,7 +1349,9 @@
 
             updateProgress(95, "Calculating Statistics...");
 
-            setTimeout(() => {
+            setTimeout(async () => {
+                const qcJob = ++qcRequestId;
+                try {
                 updateProgress(95, "Deduplicating and calculating statistics...");
 
                 const dedupRows = Array.from(ctx.uniqueRowsByKey.values());
@@ -1097,11 +1419,20 @@
                     baseName: fileName.split('.')[0]
                 };
 
+                updateProgress(95, "Preparing intensity boxplots and sample correlations...");
+                ctx.qc = await computeSampleQC(ctx);
+                if (qcJob !== qcRequestId) return;
                 updateProgress(100, "Analysis Complete!");
                 setTimeout(() => {
                     showLoading(false);
                     showResults();
                 }, 500);
+                } catch (error) {
+                    if (qcJob !== qcRequestId) return;
+                    console.error(error);
+                    showError('Could not calculate sample QC: ' + error.message);
+                    showLoading(false);
+                }
             }, 50);
         }
         function showLoading(show) {
@@ -1388,6 +1719,7 @@
                     true
                 );
             }
+            renderQCCharts();
         }
                 function downloadFile(type) {
             if (!readyData[type]) return;
@@ -1437,7 +1769,7 @@
             }, 50);
         }
         
-        function generateCsvDirectly(data, filename) {
+        function generateCsvDirectly(data, filename, notifyLargeFile = true) {
              try {
                  const chunks = [];
                  const chunkSize = 1000; // Safe chunk size
@@ -1475,7 +1807,7 @@
                  document.body.removeChild(link);
                  URL.revokeObjectURL(url);
                  
-                 alert("Note: Due to the large dataset size, the file was downloaded as CSV to ensure stability.");
+                 if (notifyLargeFile) alert("Note: Due to the large dataset size, the file was downloaded as CSV to ensure stability.");
              } catch (csvErr) {
                  throw new Error("CSV generation also failed: " + csvErr.message);
              }
@@ -1543,11 +1875,224 @@
         }
 
         
+        const qcPalette = ['#72A6DE', '#E57374', '#81C784', '#FFB74D', '#BA68C8', '#4DB6AC', '#A1887F', '#90A4AE', '#FFF176', '#CE93D8', '#80DEEA', '#F48FB1', '#A5D6A7'];
+
+        function qcNumber(value) {
+            if (!Number.isFinite(value)) return 'NA';
+            return Math.abs(value) >= 10000 || (value !== 0 && Math.abs(value) < 0.01)
+                ? value.toExponential(2) : Number(value.toPrecision(5)).toString();
+        }
+
+        function prepareQCCanvas(id, width, height) {
+            const canvas = document.getElementById(id);
+            const scale = Math.min(2, Math.sqrt(24000000 / (width * height)));
+            canvas.width = Math.ceil(width * scale);
+            canvas.height = Math.ceil(height * scale);
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            const drawing = canvas.getContext('2d');
+            drawing.setTransform(scale, 0, 0, scale, 0, 0);
+            drawing.fillStyle = '#FFFFFF'; drawing.fillRect(0, 0, width, height);
+            drawing.font = '13px Arial, sans-serif'; drawing.fillStyle = '#23364D';
+            return {canvas, drawing};
+        }
+
+        function shortenedSample(label, limit = 42) {
+            const name = String(label).replace(/\.(PEP|PG)\.Quantity\s*$/, '');
+            return name.length > limit ? name.slice(0, limit - 1) + '…' : name;
+        }
+
+        function renderIntensityBoxplot() {
+            const ctx = analysisContext, qc = ctx.qc;
+            if (!qc) return;
+            const scale = document.getElementById('intensity-scale').value;
+            const summaries = qc[scale];
+            const labels = ctx.dataColIndices.map(index => ctx.header[index]);
+            const n = labels.length;
+            const width = Math.max(980, 150 + n * 78), height = 740;
+            const left = 115, right = width - 35, top = 78, bottom = 462;
+            const {canvas, drawing: c} = prepareQCCanvas('intensity-chart', width, height);
+            const available = summaries.filter(item => item.n);
+            const help = document.getElementById('intensity-hover');
+            help.textContent = 'Hover over a sample to inspect its summary and full sample name.';
+            c.textAlign = 'center'; c.font = 'bold 17px Arial, sans-serif';
+            c.fillText(`Sample Intensity Distribution (${scale === 'log2' ? 'log2 intensity' : 'raw intensity'})`, width / 2, 32);
+            if (!available.length) {
+                c.font = '15px Arial, sans-serif'; c.fillText('No positive finite intensities after filtering and deduplication.', width / 2, 225);
+                canvas.onmousemove = null; return;
+            }
+            let minimum = Math.min(...available.map(item => item.min));
+            let maximum = Math.max(...available.map(item => item.max));
+            let padding = maximum === minimum ? Math.max(Math.abs(maximum) * 0.05, 1) : (maximum - minimum) * 0.06;
+            minimum -= padding; maximum += padding;
+            if (scale === 'raw') minimum = Math.max(0, minimum);
+            const y = value => bottom - (value - minimum) / (maximum - minimum) * (bottom - top);
+            c.font = '12px Arial, sans-serif'; c.lineWidth = 1;
+            for (let tick = 0; tick <= 5; tick++) {
+                const value = minimum + (maximum - minimum) * tick / 5;
+                const py = y(value);
+                c.strokeStyle = '#E9EDF2'; c.beginPath(); c.moveTo(left, py); c.lineTo(right, py); c.stroke();
+                c.fillStyle = '#465365'; c.textAlign = 'right'; c.fillText(qcNumber(value), left - 12, py + 4);
+            }
+            c.strokeStyle = '#465365'; c.beginPath(); c.moveTo(left, top); c.lineTo(left, bottom); c.lineTo(right, bottom); c.stroke();
+            c.save(); c.translate(24, (top + bottom) / 2); c.rotate(-Math.PI / 2); c.textAlign = 'center';
+            c.font = 'bold 13px Arial, sans-serif'; c.fillText(scale === 'log2' ? 'log2(Intensity)' : 'Intensity (raw)', 0, 0); c.restore();
+            const spacing = (right - left) / Math.max(1, n), boxWidth = Math.min(42, spacing * 0.58);
+            summaries.forEach((item, i) => {
+                const x = left + spacing * (i + 0.5);
+                const color = qcPalette[Math.floor(i / ctx.config.repCount) % qcPalette.length];
+                c.fillStyle = '#465365'; c.textAlign = 'center'; c.font = '11px Arial, sans-serif'; c.fillText(`n=${item.n}`, x, top - 14);
+                if (item.n) {
+                    c.strokeStyle = '#32465C'; c.lineWidth = 1.3;
+                    c.beginPath(); c.moveTo(x, y(item.lowerWhisker)); c.lineTo(x, y(item.upperWhisker));
+                    for (const v of [item.lowerWhisker, item.upperWhisker]) { c.moveTo(x - boxWidth / 3, y(v)); c.lineTo(x + boxWidth / 3, y(v)); }
+                    c.stroke();
+                    const boxTop = y(item.q3), boxHeight = Math.max(1, y(item.q1) - boxTop);
+                    c.fillStyle = color; c.fillRect(x - boxWidth / 2, boxTop, boxWidth, boxHeight);
+                    c.strokeRect(x - boxWidth / 2, boxTop, boxWidth, boxHeight);
+                    c.lineWidth = 2; c.beginPath(); c.moveTo(x - boxWidth / 2, y(item.median)); c.lineTo(x + boxWidth / 2, y(item.median)); c.stroke();
+                    c.fillStyle = '#54667B99';
+                    item.outliers.forEach((value, k) => {
+                        const jitter = ((k * 37 % 101) / 100 - 0.5) * boxWidth * 0.7;
+                        c.beginPath(); c.arc(x + jitter, y(value), 1.8, 0, 2 * Math.PI); c.fill();
+                    });
+                } else { c.fillStyle = '#8895A3'; c.fillText('NA', x, (top + bottom) / 2); }
+                c.save(); c.translate(x + 3, bottom + 16); c.rotate(-Math.PI / 4);
+                c.textAlign = 'right'; c.fillStyle = '#23364D'; c.font = '12px Arial, sans-serif';
+                c.fillText(shortenedSample(labels[i]), 0, 0); c.restore();
+            });
+            c.textAlign = 'center'; c.font = '12px Arial, sans-serif'; c.fillStyle = '#465365';
+            c.fillText('Boxes: Q1–Q3; line: median; whiskers: observed values within 1.5 × IQR.', width / 2, height - 30);
+            c.fillText('Outliers: up to 400 evenly selected points per sample; all observations enter the statistics.', width / 2, height - 12);
+            canvas.onmousemove = event => {
+                const bounds = canvas.getBoundingClientRect();
+                const px = (event.clientX - bounds.left) * width / bounds.width;
+                const index = Math.floor((px - left) / spacing);
+                if (index < 0 || index >= n) return;
+                const item = summaries[index];
+                help.textContent = `${labels[index]} | n=${item.n}` + (item.n
+                    ? ` | Q1=${qcNumber(item.q1)} | Median=${qcNumber(item.median)} | Q3=${qcNumber(item.q3)} | Whiskers=${qcNumber(item.lowerWhisker)}–${qcNumber(item.upperWhisker)} | Outliers=${item.outlierCount}` : ' | No valid positive intensities.');
+            };
+        }
+
+        function correlationColor(value) {
+            if (value === null || !Number.isFinite(value)) return '#E5E9EE';
+            // Display scale only: retain the true coefficients in labels and exports.
+            const displayed = Math.max(0, Math.min(1, value));
+            const from = [255, 255, 255], to = displayed < 0.5 ? [59, 110, 168] : [190, 54, 69];
+            const a = Math.abs(displayed * 2 - 1);
+            return `rgb(${from.map((v, i) => Math.round(v + (to[i] - v) * a)).join(',')})`;
+        }
+
+        function renderCorrelationHeatmap() {
+            const ctx = analysisContext, qc = ctx.qc;
+            if (!qc) return;
+            const labels = ctx.dataColIndices.map(index => ctx.header[index]), n = labels.length;
+            const cell = n <= 16 ? 43 : n <= 35 ? 30 : 20;
+            const margin = 290, size = Math.max(1, n) * cell;
+            const width = margin + size + 120, height = margin + size + 82;
+            const left = margin, top = margin;
+            const {canvas, drawing: c} = prepareQCCanvas('correlation-chart', width, height);
+            c.textAlign = 'center'; c.font = 'bold 17px Arial, sans-serif';
+            c.fillText(`Sample Correlation — ${qc.method} (log2 intensity)`, width / 2, 30);
+            c.font = '12px Arial, sans-serif'; c.fillStyle = '#465365';
+            c.fillText('Pairwise complete observations; minimum 3 shared features; NA for constant values.', width / 2, 53);
+            labels.forEach((label, i) => {
+                c.fillStyle = '#23364D'; c.font = '12px Arial, sans-serif'; c.textAlign = 'right';
+                c.fillText(shortenedSample(label, 38), left - 13, top + (i + 0.5) * cell + 4);
+                c.save(); c.translate(left + (i + 0.5) * cell + 4, top - 13); c.rotate(-Math.PI / 2);
+                c.textAlign = 'left'; c.fillText(shortenedSample(label, 38), 0, 0); c.restore();
+                const color = qcPalette[Math.floor(i / ctx.config.repCount) % qcPalette.length];
+                c.fillStyle = color; c.fillRect(left - 7, top + i * cell, 5, cell);
+                c.fillRect(left + i * cell, top - 7, cell, 5);
+                for (let j = 0; j < n; j++) {
+                    const value = qc.correlation[i][j], x = left + j * cell, y = top + i * cell;
+                    c.fillStyle = correlationColor(value); c.fillRect(x, y, cell, cell);
+                    c.strokeStyle = '#FFFFFF'; c.lineWidth = 0.7; c.strokeRect(x, y, cell, cell);
+                    if (n <= 35) {
+                        c.fillStyle = value !== null && (value < 0.175 || value > 0.825) ? '#FFFFFF' : '#23364D';
+                        c.font = `${n <= 16 ? 11 : 9}px Arial, sans-serif`; c.textAlign = 'center';
+                        c.fillText(value === null ? 'NA' : value.toFixed(2), x + cell / 2, y + cell / 2 + 4);
+                    }
+                }
+            });
+            const legendX = left + size + 28, legendY = top, legendHeight = Math.min(240, size);
+            for (let y = 0; y < legendHeight; y++) {
+                c.fillStyle = correlationColor(1 - y / Math.max(1, legendHeight - 1));
+                c.fillRect(legendX, legendY + y, 18, 1.5);
+            }
+            c.fillStyle = '#23364D'; c.font = '12px Arial, sans-serif'; c.textAlign = 'left';
+            [1, 0.75, 0.5, 0.25, 0].forEach(value => c.fillText(String(value), legendX + 25, legendY + (1 - value) * legendHeight + 4));
+            c.fillStyle = '#E5E9EE'; c.fillRect(legendX, legendY + legendHeight + 22, 18, 15);
+            c.fillStyle = '#23364D'; c.fillText('NA', legendX + 25, legendY + legendHeight + 34);
+            c.textAlign = 'center'; c.font = '12px Arial, sans-serif';
+            c.fillText('Sample order follows the selected input columns. Group colors follow Biological Replicates Count.', width / 2, height - 25);
+            const help = document.getElementById('correlation-hover');
+            help.textContent = 'Hover over a cell to inspect the coefficient, shared feature count and full sample names.';
+            canvas.onmousemove = event => {
+                const bounds = canvas.getBoundingClientRect();
+                const x = (event.clientX - bounds.left) * width / bounds.width;
+                const y = (event.clientY - bounds.top) * height / bounds.height;
+                const i = Math.floor((y - top) / cell), j = Math.floor((x - left) / cell);
+                if (i < 0 || j < 0 || i >= n || j >= n) return;
+                const value = qc.correlation[i][j];
+                help.textContent = `${labels[i]} × ${labels[j]} | ${qc.method} = ${value === null ? 'NA (insufficient observations or constant values)' : value.toFixed(6)} | Shared features: ${qc.pairCounts[i][j]}`;
+            };
+        }
+
+        function renderQCCharts() {
+            document.getElementById('correlation-description').textContent =
+                `${analysisContext.qc.method} correlation of log2 intensities, using pairwise complete observations. Zero, negative and non-finite input intensities are excluded; no imputation or pseudocount is applied. Spearman ties use average ranks. Color scale: 0–1 (blue–white–red). Negative correlation coefficients use the minimum color; labels, hover details and CSV retain the true coefficients.`;
+            renderIntensityBoxplot(); renderCorrelationHeatmap();
+        }
+
+        function downloadQCData(type) {
+            const ctx = analysisContext, qc = ctx.qc;
+            if (!qc) return;
+            const names = ctx.dataColIndices.map(index => ctx.header[index]);
+            let rows;
+            if (type === 'intensity') {
+                rows = [['Sample', 'Scale', 'N', 'Min', 'Q1', 'Median', 'Q3', 'Max', 'Lower_whisker', 'Upper_whisker', 'Outlier_count']];
+                ['raw', 'log2'].forEach(scale => qc[scale].forEach((item, i) => rows.push([
+                    names[i], scale, item.n, item.min, item.q1, item.median, item.q3, item.max,
+                    item.lowerWhisker, item.upperWhisker, item.outlierCount])));
+            } else if (type === 'matrix') {
+                const keyIndex = ctx.config.modType === 'Proteome' ? ctx.config.uniqueIdColIndex : ctx.config.modColIndex;
+                rows = [[ctx.header[keyIndex], ...names], ...ctx.filteredRows.slice(1).map(row => [
+                    row[keyIndex], ...ctx.dataColIndices.map(index => isValidValue(row[index]) ? Number(row[index]) : null)])];
+            } else {
+                const matrix = type === 'pair-counts' ? qc.pairCounts : qc.correlation;
+                rows = [['Sample', ...names], ...matrix.map((row, i) => [names[i], ...row])];
+            }
+            // Reuse the existing CSV writer without the large-file fallback notification.
+            generateCsvDirectly(rows, `${readyData.baseName}_${type === 'correlation' ? qc.method + '_correlation_log2' : type}.csv`, false);
+        }
+
+        document.getElementById('intensity-scale').addEventListener('change', renderIntensityBoxplot);
+        document.getElementById('download-intensity').addEventListener('click', () => downloadQCData('intensity'));
+        document.getElementById('download-qc-matrix').addEventListener('click', () => downloadQCData('matrix'));
+        document.getElementById('download-correlation').addEventListener('click', () => downloadQCData('correlation'));
+        document.getElementById('download-pair-counts').addEventListener('click', () => downloadQCData('pair-counts'));
+        document.getElementById('download-intensity-png').addEventListener('click', () => downloadChartImage('intensity-chart', 'Sample_Intensity_Boxplot.png'));
+        document.getElementById('download-intensity-pdf').addEventListener('click', () => downloadChartPdf('intensity-chart', 'Sample_Intensity_Boxplot.pdf'));
+        document.getElementById('download-correlation-png').addEventListener('click', () => downloadChartImage('correlation-chart', 'Sample_Correlation_Heatmap.png'));
+        document.getElementById('download-correlation-pdf').addEventListener('click', () => downloadChartPdf('correlation-chart', 'Sample_Correlation_Heatmap.pdf'));
+
         document.getElementById('reset-btn').addEventListener('click', function() {
+            ++qcRequestId;
+            if (qcWorker) { qcWorker.terminate(); qcWorker = null; }
+            document.getElementById('intensity-scale').value = 'log2';
+            document.getElementById('intensity-chart').onmousemove = null;
+            document.getElementById('correlation-chart').onmousemove = null;
             document.querySelector('.tool-form').style.display = 'block';
             document.getElementById('results-section').style.display = 'none';
             document.getElementById('error-message').style.display = 'none';
             document.getElementById('analysis-form').reset();
+            ++headerRequestId;
+            uploadedHeader = null;
+            isReadingHeader = false;
+            clearDetectedColumns();
+            setHeaderStatus('');
             toggleProteMode();
             readyData = {};
             analysisContext = {};
